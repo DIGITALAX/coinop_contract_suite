@@ -8,9 +8,25 @@ import "./PreRollCollection.sol";
 import "./CustomCompositeNFT.sol";
 import "./CoinOpChildFGO.sol";
 import "./CoinOpParentFGO.sol";
+import "./CoinOpOracle.sol";
+import "./CoinOpPayment.sol";
+
+library MarketParamsLibrary {
+    struct MarketParams {
+        uint256[] preRollIds;
+        uint256[] preRollAmounts;
+        uint256[] customIds;
+        uint256[] customAmounts;
+        string[] customURIs;
+        string fulfillmentDetails;
+        address chosenTokenAddress;
+    }
+}
 
 contract CoinOpMarket {
     PreRollCollection private _preRollCollection;
+    CoinOpPayment private _coinOpPayment;
+    CoinOpOracle private _oracle;
     CoinOpAccessControl private _accessControl;
     CoinOpFulfillment private _coinOpFulfillment;
     CustomCompositeNFT private _customCompositeNFT;
@@ -59,6 +75,11 @@ contract CoinOpMarket {
         address indexed newAccessControl,
         address updater
     );
+    event OracleUpdated(
+        address indexed oldOracle,
+        address indexed newOracle,
+        address updater
+    );
     event PreRollCollectionUpdated(
         address indexed oldPreRollCollection,
         address indexed newPreRollCollection,
@@ -67,6 +88,11 @@ contract CoinOpMarket {
     event CompositeNFTUpdated(
         address indexed oldCompositeNFT,
         address indexed newCompositeNFT,
+        address updater
+    );
+    event CoinOpPaymentUpdated(
+        address indexed oldCoinOpPayment,
+        address indexed newCoinOpPayment,
         address updater
     );
     event ChildFGOUpdated(
@@ -85,13 +111,15 @@ contract CoinOpMarket {
         address updater
     );
     event TokensBought(
-        uint256[] collectionIds,
+        uint256[] preRollIds,
+        uint256[] customIds,
+        uint256[] preRollAmounts,
+        uint256[] customAmounts,
         address chosenTokenAddress,
-        uint256[] tokenTypes,
         uint256[] prices,
-        uint256[] amounts,
         address buyer
     );
+
     event OrderIsFulfilled(uint256 indexed _orderId, address _fulfillerAddress);
 
     event OrderCreated(
@@ -119,11 +147,15 @@ contract CoinOpMarket {
         address _customCompositeContract,
         address _childFGOContract,
         address _parentFGOContract,
+        address _oracleContract,
+        address _coinOpPaymentContract,
         string memory _symbol,
         string memory _name
     ) {
         _preRollCollection = PreRollCollection(_collectionContract);
         _accessControl = CoinOpAccessControl(_accessControlContract);
+        _coinOpPayment = CoinOpPayment(_coinOpPaymentContract);
+        _oracle = CoinOpOracle(_oracleContract);
         _coinOpFulfillment = CoinOpFulfillment(_fulfillmentContract);
         _customCompositeNFT = CustomCompositeNFT(_customCompositeContract);
         _childFGO = CoinOpChildFGO(_childFGOContract);
@@ -135,121 +167,115 @@ contract CoinOpMarket {
 
     // collectionIds for preRoll and childId for custom
     function buyTokens(
-        uint256[] memory _amounts,
-        uint256[] memory _collectionIds,
-        uint256[] memory _tokenTypes,
-        string[] memory _customURIs,
-        string memory _fulfillmentDetails,
-        address _chosenTokenAddress
+        MarketParamsLibrary.MarketParams memory params
     ) external {
         require(
-            _collectionIds.length == _amounts.length &&
-                _tokenTypes.length == _amounts.length,
-            "CoinOpMarket: Must provide an amount, token address and type for each collectionId."
+            _coinOpPayment.checkIfAddressVerified(params.chosenTokenAddress),
+            "CoinOpPayment: Not a valid chosen payment address."
+        );
+        require(
+            params.customIds.length == params.customAmounts.length &&
+                params.preRollIds.length == params.preRollAmounts.length,
+            "CoinOpMarket: Each token must have an amount."
         );
 
-        for (uint256 i = 0; i < _tokenTypes.length; i++) {
-            require(
-                _tokenTypes[i] == 0 || _tokenTypes[i] == 1,
-                "CoinOpMarket: Not a valid token type, must be custom or preroll"
+        uint256[] memory _prices = new uint256[](
+            params.preRollIds.length + params.customIds.length
+        );
+        uint256 exchangeRate = _oracle.getRateByAddress(
+            params.chosenTokenAddress
+        );
+
+        for (uint256 i = 0; i < params.preRollIds.length; i++) {
+            (uint256 price, uint256 fulfillerId) = _preRollCollectionMint(
+                params.preRollIds[i],
+                exchangeRate,
+                params.preRollAmounts[i]
+            );
+            _canPurchase(params.chosenTokenAddress, price);
+            address creator = _preRollCollection.getCollectionCreator(
+                params.preRollIds[i]
+            );
+            _transferTokens(
+                params.chosenTokenAddress,
+                creator,
+                msg.sender,
+                price,
+                fulfillerId
+            );
+            _prices[i] = price;
+
+            uint256[] memory _tokenIds = _preRollCollection
+                .getCollectionTokenIds(params.preRollIds[i]);
+
+            _preRollTokensSold[params.preRollIds[i]] += 1;
+            _preRollTokenIdsSold[params.preRollIds[i]].push(
+                _tokenIds[_tokenIds.length - 1]
+            );
+
+            _createOrder(
+                params.chosenTokenAddress,
+                msg.sender,
+                price,
+                fulfillerId,
+                0,
+                _tokenIds[_tokenIds.length - 1],
+                params.fulfillmentDetails
             );
         }
 
-        uint256[] memory _prices = new uint256[](_collectionIds.length);
-        uint256[] memory _preRolls;
-        uint256[] memory _preRollsAmounts;
+        for (uint256 i = 0; i < params.customIds.length; i++) {
+            (uint256 price, uint256 fulfillerId) = _customCompositeMint(
+                params.customIds[i],
+                exchangeRate
+            );
+            _canPurchase(params.chosenTokenAddress, price);
+            address creator = _childFGO.getChildCreator(params.customIds[i]);
+            _transferTokens(
+                params.chosenTokenAddress,
+                creator,
+                msg.sender,
+                price,
+                fulfillerId
+            );
 
-        for (uint256 i = 0; i < _collectionIds.length; i++) {
-            // preroll
-            if (_tokenTypes[i] == 0) {
-                (uint256 price, uint256 fulfillerId) = _preRollCollectionMint(
-                    _collectionIds[i],
-                    _chosenTokenAddress,
-                    _amounts[i]
-                );
-                _canPurchase(_chosenTokenAddress, price);
-                address creator = _preRollCollection.getCollectionCreator(
-                    _collectionIds[i]
-                );
-                _transferTokens(
-                    _chosenTokenAddress,
-                    creator,
-                    msg.sender,
-                    price,
-                    fulfillerId
-                );
-                _prices[i] = price;
-                _preRollsAmounts[i] = _amounts[i];
-                _preRolls[i] = _collectionIds[i];
+            _customCompositeNFT.mintBatch(
+                params.chosenTokenAddress,
+                creator,
+                price,
+                params.customAmounts[i],
+                fulfillerId,
+                params.customIds[i],
+                params.customURIs[i]
+            );
 
-                uint256[] memory _tokenIds = _preRollCollection
-                    .getCollectionTokenIds(_preRolls[i]);
+            _createOrder(
+                params.chosenTokenAddress,
+                msg.sender,
+                price,
+                fulfillerId,
+                1,
+                params.customIds[i],
+                params.fulfillmentDetails
+            );
 
-                _preRollTokensSold[_preRolls[i]] += 1;
-                _preRollTokenIdsSold[_preRolls[i]].push(
-                    _tokenIds[_tokenIds.length - 1]
-                );
-
-                _createOrder(
-                    _chosenTokenAddress,
-                    msg.sender,
-                    price,
-                    fulfillerId,
-                    0,
-                    _tokenIds[_tokenIds.length - 1],
-                    _fulfillmentDetails
-                );
-            } else {
-                (uint256 price, uint256 fulfillerId) = _customCompositeMint(
-                    _collectionIds[i],
-                    _chosenTokenAddress
-                );
-                _canPurchase(_chosenTokenAddress, price);
-                address creator = _childFGO.getChildCreator(_collectionIds[i]);
-                _transferTokens(
-                    _chosenTokenAddress,
-                    creator,
-                    msg.sender,
-                    price,
-                    fulfillerId
-                );
-
-                _customCompositeNFT.mintBatch(
-                    _chosenTokenAddress,
-                    creator,
-                    price,
-                    _amounts[i],
-                    fulfillerId,
-                    _collectionIds[i],
-                    _customURIs[i]
-                );
-
-                _createOrder(
-                    _chosenTokenAddress,
-                    msg.sender,
-                    price,
-                    fulfillerId,
-                    1,
-                    _collectionIds[i],
-                    _fulfillmentDetails
-                );
-
-                _prices[i] = price;
-            }
+            _prices[i] = price;
         }
 
         _preRollCollection.purchaseAndMintToken(
-            _preRolls,
-            _preRollsAmounts,
-            msg.sender
+            params.preRollIds,
+            params.preRollAmounts,
+            msg.sender,
+            params.chosenTokenAddress
         );
 
         emit TokensBought(
-            _collectionIds,
-            _chosenTokenAddress,
-            _tokenTypes,
+            params.preRollIds,
+            params.customIds,
+            params.preRollAmounts,
+            params.customAmounts,
+            params.chosenTokenAddress,
             _prices,
-            _amounts,
             msg.sender
         );
     }
@@ -315,7 +341,7 @@ contract CoinOpMarket {
 
     function _preRollCollectionMint(
         uint256 _collectionId,
-        address _chosenAddress,
+        uint256 _exchangeRate,
         uint256 _amount
     ) internal view returns (uint256, uint256) {
         require(
@@ -325,31 +351,18 @@ contract CoinOpMarket {
             "CoinOpMarket: No more tokens can be bought from this collection."
         );
 
-        address[] memory acceptedTokens = _preRollCollection
-            .getCollectionAcceptedTokens(_collectionId);
-        _isAcceptedToken(acceptedTokens, _chosenAddress);
+        uint256 basePrice = _preRollCollection.getCollectionBasePrice(
+            _collectionId
+        );
 
-        uint256 preRollPrice;
+        uint256 preRollPrice = basePrice / _exchangeRate;
 
-        for (uint256 j = 0; j < acceptedTokens.length; j++) {
-            if (acceptedTokens[j] == _chosenAddress) {
-                preRollPrice = _preRollCollection.getCollectionBasePrices(
-                    _collectionId
-                )[j];
-
-                if (
-                    _preRollCollection.getCollectionDiscount(_collectionId) != 0
-                ) {
-                    preRollPrice =
-                        preRollPrice -
-                        ((preRollPrice *
-                            _preRollCollection.getCollectionDiscount(
-                                _collectionId
-                            )) / 100);
-                }
-
-                break;
-            }
+        if (_preRollCollection.getCollectionDiscount(_collectionId) != 0) {
+            preRollPrice =
+                preRollPrice -
+                ((preRollPrice *
+                    _preRollCollection.getCollectionDiscount(_collectionId)) /
+                    100);
         }
 
         uint256 fulfillerId = _preRollCollection.getCollectionFulfillerId(
@@ -361,25 +374,13 @@ contract CoinOpMarket {
 
     function _customCompositeMint(
         uint256 _childId,
-        address _chosenAddress
+        uint256 _exchangeRate
     ) internal view returns (uint256, uint256) {
-        address[] memory acceptedTokens = _childFGO.getChildAcceptedTokens(
-            _childId
-        );
-        _isAcceptedToken(acceptedTokens, _chosenAddress);
+        uint256 parentId = _childFGO.getChildTokenParentId(_childId);
+        uint256 parentPrice = _parentFGO.getParentPrice(parentId);
+        uint256 basePrice = _childFGO.getChildPrice(_childId) + parentPrice;
 
-        uint256 customPrice;
-
-        for (uint256 j = 0; j < acceptedTokens.length; j++) {
-            if (acceptedTokens[j] == _chosenAddress) {
-                uint256 parentId = _childFGO.getChildTokenParentId(_childId);
-                uint256 parentPrice = _parentFGO.getParentPrices(parentId)[j];
-                customPrice =
-                    _childFGO.getChildPrices(_childId)[j] +
-                    parentPrice;
-                break;
-            }
-        }
+        uint256 customPrice = basePrice / _exchangeRate;
 
         uint256 fulfillerId = _childFGO.getChildFulfillerId(_childId);
 
@@ -398,23 +399,6 @@ contract CoinOpMarket {
         require(
             allowance >= _price,
             "CoinOpMarket: Insufficient Approval Allowance."
-        );
-    }
-
-    function _isAcceptedToken(
-        address[] memory _acceptedTokens,
-        address _chosenAddress
-    ) internal pure {
-        bool isAccepted = false;
-        for (uint256 j = 0; j < _acceptedTokens.length; j++) {
-            if (_acceptedTokens[j] == _chosenAddress) {
-                isAccepted = true;
-                break;
-            }
-        }
-        require(
-            isAccepted,
-            "CoinOpMarket: Chosen token address is not an accepted token for the collection."
         );
     }
 
@@ -466,10 +450,28 @@ contract CoinOpMarket {
         );
     }
 
+    function updateOracle(address _newOracleAddress) external onlyAdmin {
+        address oldAddress = address(_oracle);
+        _oracle = CoinOpOracle(_newOracleAddress);
+        emit OracleUpdated(oldAddress, _newOracleAddress, msg.sender);
+    }
+
     function updateChildFGO(address _newChildFGOAddress) external onlyAdmin {
         address oldAddress = address(_childFGO);
         _childFGO = CoinOpChildFGO(_newChildFGOAddress);
         emit ChildFGOUpdated(oldAddress, _newChildFGOAddress, msg.sender);
+    }
+
+    function updateCoinOpPayment(
+        address _newCoinOpPaymentAddress
+    ) external onlyAdmin {
+        address oldAddress = address(_coinOpPayment);
+        _coinOpPayment = CoinOpPayment(_newCoinOpPaymentAddress);
+        emit CoinOpPaymentUpdated(
+            oldAddress,
+            _newCoinOpPaymentAddress,
+            msg.sender
+        );
     }
 
     function updateParentFGO(address _newParentFGOAddress) external onlyAdmin {
@@ -581,8 +583,16 @@ contract CoinOpMarket {
         return address(_customCompositeNFT);
     }
 
+    function getOracleContract() public view returns (address) {
+        return address(_oracle);
+    }
+
     function getChildFGOContract() public view returns (address) {
         return address(_childFGO);
+    }
+
+    function getCoinOpPayment() public view returns (address) {
+        return address(_coinOpPayment);
     }
 
     function getParentFGOContract() public view returns (address) {

@@ -21,8 +21,7 @@ contract CoinOpChildFGO is ERC1155 {
         uint256 _amount;
         uint256 _parentId;
         uint256 _fulfillerId;
-        uint256[] _prices;
-        address[] _acceptedTokens;
+        uint256 _price;
         address _creator;
     }
 
@@ -70,9 +69,8 @@ contract CoinOpChildFGO is ERC1155 {
     function mint(
         uint256 _amount,
         uint256 _fulfillerId,
-        uint256[] memory _prices,
+        uint256 _price,
         string memory _tokenURI,
-        address[] memory _acceptedTokens,
         address _creator
     ) public onlyParent {
         ++_tokenIdPointer;
@@ -82,8 +80,7 @@ contract CoinOpChildFGO is ERC1155 {
             _amount: _amount,
             _parentId: 0,
             _fulfillerId: _fulfillerId,
-            _prices: _prices,
-            _acceptedTokens: _acceptedTokens,
+            _price: _price,
             _creator: _creator
         });
 
@@ -95,8 +92,7 @@ contract CoinOpChildFGO is ERC1155 {
         uint256[] memory _amounts,
         uint256[] memory _fulfillerId,
         string[] memory _tokenURIs,
-        uint256[][] memory _prices,
-        address[][] memory _acceptedTokens,
+        uint256[] memory _price,
         address[] memory _creator
     ) public onlyParent {
         require(
@@ -112,8 +108,7 @@ contract CoinOpChildFGO is ERC1155 {
                 _amount: _amounts[i],
                 _parentId: 0,
                 _fulfillerId: _fulfillerId[i],
-                _prices: _prices[i],
-                _acceptedTokens: _acceptedTokens[i],
+                _price: _price[i],
                 _creator: _creator[i]
             });
         }
@@ -197,16 +192,10 @@ contract CoinOpChildFGO is ERC1155 {
         return _tokenIdToTemplate[_tokenId]._creator;
     }
 
-    function getChildPrices(
+    function getChildPrice(
         uint256 _tokenId
-    ) public view returns (uint256[] memory) {
-        return _tokenIdToTemplate[_tokenId]._prices;
-    }
-
-    function getChildAcceptedTokens(
-        uint256 _tokenId
-    ) public view returns (address[] memory) {
-        return _tokenIdToTemplate[_tokenId]._acceptedTokens;
+    ) public view returns (uint256) {
+        return _tokenIdToTemplate[_tokenId]._price;
     }
 
     function getChildTokenParentId(

@@ -21,10 +21,9 @@ contract CoinOpParentFGO is ERC721 {
         uint256 _tokenId;
         uint256 _fulfillerId;
         uint256[] _childTokenIds;
-        uint256[] _prices;
+        uint256 _price;
         string _tokenURI;
         string _printType;
-        address[] _acceptedTokens;
         address _creator;
     }
 
@@ -75,26 +74,18 @@ contract CoinOpParentFGO is ERC721 {
         string memory _parentURI,
         string memory _printType,
         string[] memory _childURIs,
-        address[] memory _acceptedTokens,
-        address[][] memory _childAcceptedTokens,
-        uint256[] memory _prices,
-        uint256[][] memory _childPrices,
+        uint256 _price,
+        uint256[] memory _childPrices,
         uint256 _fulfillerId
     ) public onlyAdmin {
         require(
-            _prices.length == _acceptedTokens.length,
-            "CoinOpParentFGO: Prices and Accepted Tokens must be the same length."
+            _childPrices.length == _childURIs.length,
+            "CoinOpParentFGO: Prices and URIs Tokens must be the same length."
         );
         require(
             _fulfillment.getFulfillerAddress(_fulfillerId) != address(0),
             "CoinOpFulfillment: Fulfiller Id is not valid."
         );
-        for (uint256 i = 0; i < _acceptedTokens.length; i++) {
-            require(
-                _payment.checkIfAddressVerified(_acceptedTokens[i]),
-                "CoinOpPayment: Payment Token is Not Verified."
-            );
-        }
 
         ++_totalSupply;
 
@@ -110,8 +101,7 @@ contract CoinOpParentFGO is ERC721 {
             _fulfillerId: _fulfillerId,
             _tokenURI: _parentURI,
             _childTokenIds: _childTokenIds,
-            _acceptedTokens: _acceptedTokens,
-            _prices: _prices,
+            _price: _price,
             _printType: _printType,
             _creator: msg.sender
         });
@@ -122,7 +112,6 @@ contract CoinOpParentFGO is ERC721 {
                 _fulfillerId,
                 _childPrices[i],
                 _childURIs[i],
-                _childAcceptedTokens[i],
                 msg.sender
             );
         }
@@ -183,16 +172,10 @@ contract CoinOpParentFGO is ERC721 {
         return _tokenIdToTemplate[_tokenId]._fulfillerId;
     }
 
-    function getParentAcceptedTokens(
+    function getParentPrice(
         uint256 _tokenId
-    ) public view virtual returns (address[] memory) {
-        return _tokenIdToTemplate[_tokenId]._acceptedTokens;
-    }
-
-    function getParentPrices(
-        uint256 _tokenId
-    ) public view virtual returns (uint256[] memory) {
-        return _tokenIdToTemplate[_tokenId]._prices;
+    ) public view virtual returns (uint256) {
+        return _tokenIdToTemplate[_tokenId]._price;
     }
 
     function getParentPrintType(

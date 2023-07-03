@@ -10,8 +10,7 @@ pragma solidity ^0.8.9;
 
 library MintParamsLibrary {
     struct MintParams {
-        address[] acceptedTokens;
-        uint256[] basePrices;
+        uint256 basePrice;
         uint256 fulfillerId;
         uint256 discount;
         string[] sizes;
@@ -33,13 +32,12 @@ contract PreRollCollection {
     string public name;
 
     struct Collection {
-        uint256[] basePrices;
+        uint256 basePrice;
         uint256[] tokenIds;
         uint256 collectionId;
         uint256 amount;
         uint256 timestamp;
         uint256 mintedTokens;
-        address[] acceptedTokens;
         address creator;
         string uri;
         bool isDeleted;
@@ -81,17 +79,10 @@ contract PreRollCollection {
         address updater
     );
 
-    event CollectionBasePricesUpdated(
+    event CollectionBasePriceUpdated(
         uint256 indexed collectionId,
-        uint256[] oldPrices,
-        uint256[] newPrices,
-        address updater
-    );
-
-    event CollectionAcceptedTokensUpdated(
-        uint256 indexed collectionId,
-        address[] oldAcceptedTokens,
-        address[] newAcceptedTokens,
+        uint256 oldPrice,
+        uint256 newPrice,
         address updater
     );
 
@@ -197,11 +188,6 @@ contract PreRollCollection {
         bool _noLimit
     ) external {
         address _creator = msg.sender;
-
-        require(
-            params.basePrices.length == params.acceptedTokens.length,
-            "PreRollCollection: Invalid input"
-        );
         require(
             _accessControl.isAdmin(_creator) ||
                 _accessControl.isWriter(_creator),
@@ -212,12 +198,6 @@ contract PreRollCollection {
                 address(0),
             "CoinOpFulfillment: FulfillerId does not exist."
         );
-        for (uint256 i = 0; i < params.acceptedTokens.length; i++) {
-            require(
-                _coinOpPayment.checkIfAddressVerified(params.acceptedTokens[i]),
-                "CoinOpPayment: Payment Token is Not Verified"
-            );
-        }
 
         _collectionSupply++;
 
@@ -281,8 +261,7 @@ contract PreRollCollection {
     ) private {
         Collection memory newCollection = Collection({
             collectionId: _collectionSupply,
-            acceptedTokens: params.acceptedTokens,
-            basePrices: params.basePrices,
+            basePrice: params.basePrice,
             tokenIds: new uint256[](0),
             amount: _amount,
             mintedTokens: 0,
@@ -299,12 +278,12 @@ contract PreRollCollection {
         Collection memory _collection,
         uint256 _amount,
         address _creatorAddress,
-        address _purchaserAddress
+        address _purchaserAddress,
+        address _acceptedToken
     ) private {
         MintParamsLibrary.MintParams memory paramsNFT = MintParamsLibrary
             .MintParams({
-                acceptedTokens: _collection.acceptedTokens,
-                basePrices: _collection.basePrices,
+                basePrice: _collection.basePrice,
                 uri: _collection.uri,
                 printType: _printType[_collection.collectionId],
                 fulfillerId: _fulfillerId[_collection.collectionId],
@@ -317,15 +296,21 @@ contract PreRollCollection {
             _amount,
             _collectionSupply,
             _creatorAddress,
-            _purchaserAddress
+            _purchaserAddress,
+            _acceptedToken
         );
     }
 
     function purchaseAndMintToken(
         uint256[] memory _collectionIds,
         uint256[] memory _amounts,
-        address _purchaserAddress
+        address _purchaserAddress,
+        address _acceptedToken
     ) external onlyMarket {
+        require(
+            _coinOpPayment.checkIfAddressVerified(_acceptedToken),
+            "CoinOpPayment: Not a valid accepted purchase token."
+        );
         require(
             _collectionIds.length == _amounts.length,
             "PreRollCollection: Input arrays must be of equal length"
@@ -352,7 +337,8 @@ contract PreRollCollection {
                     _collections[_collectionIds[c]],
                     _amounts[c],
                     collection.creator,
-                    _purchaserAddress
+                    _purchaserAddress,
+                    _acceptedToken
                 );
             }
 
@@ -469,16 +455,10 @@ contract PreRollCollection {
         return _collections[_collectionId].amount;
     }
 
-    function getCollectionAcceptedTokens(
+    function getCollectionBasePrice(
         uint256 _collectionId
-    ) public view returns (address[] memory) {
-        return _collections[_collectionId].acceptedTokens;
-    }
-
-    function getCollectionBasePrices(
-        uint256 _collectionId
-    ) public view returns (uint256[] memory) {
-        return _collections[_collectionId].basePrices;
+    ) public view returns (uint256) {
+        return _collections[_collectionId].basePrice;
     }
 
     function getCollectionIsDeleted(
@@ -616,38 +596,20 @@ contract PreRollCollection {
         emit CollectionDiscountUpdated(_collectionId, _newDiscount, msg.sender);
     }
 
-    function setCollectionBasePrices(
+    function setCollection(
         uint256 _collectionId,
-        uint256[] memory _newPrices
+        uint256 _newPrice
     ) external onlyCreator(_collectionId) {
         require(
             !_collections[_collectionId].isDeleted,
             "PreRollCollection: This collection has been deleted."
         );
-        uint256[] memory oldPrices = _collections[_collectionId].basePrices;
-        _collections[_collectionId].basePrices = _newPrices;
-        emit CollectionBasePricesUpdated(
+        uint256 oldPrice = _collections[_collectionId].basePrice;
+        _collections[_collectionId].basePrice = _newPrice;
+        emit CollectionBasePriceUpdated(
             _collectionId,
-            oldPrices,
-            _newPrices,
-            msg.sender
-        );
-    }
-
-    function setCollectionAcceptedTokens(
-        uint256 _collectionId,
-        address[] memory _newAcceptedTokens
-    ) external onlyCreator(_collectionId) {
-        require(
-            !_collections[_collectionId].isDeleted,
-            "PreRollCollection: This collection has been deleted."
-        );
-        address[] memory oldTokens = _collections[_collectionId].acceptedTokens;
-        _collections[_collectionId].acceptedTokens = _newAcceptedTokens;
-        emit CollectionAcceptedTokensUpdated(
-            _collectionId,
-            oldTokens,
-            _newAcceptedTokens,
+            oldPrice,
+            _newPrice,
             msg.sender
         );
     }

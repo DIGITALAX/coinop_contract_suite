@@ -17,8 +17,8 @@ contract PreRollNFT is ERC721Enumerable {
     struct Token {
         uint256 tokenId;
         uint256 collectionId;
-        address[] acceptedTokens;
-        uint256[] basePrices;
+        uint256 basePrice;
+        address acceptedToken;
         address creator;
         string uri;
         bool isBurned;
@@ -46,14 +46,8 @@ contract PreRollNFT is ERC721Enumerable {
     event TokenBurned(uint256 indexed tokenId);
     event TokenBasePriceUpdated(
         uint256 indexed tokenId,
-        uint256[] oldPrice,
-        uint256[] newPrice,
-        address updater
-    );
-    event TokenAcceptedTokensUpdated(
-        uint256 indexed tokenId,
-        address[] oldAcceptedTokens,
-        address[] newAcceptedTokens,
+        uint256 oldPrice,
+        uint256 newPrice,
         address updater
     );
     event TokenURIUpdated(
@@ -112,7 +106,8 @@ contract PreRollNFT is ERC721Enumerable {
         uint256 _amount,
         uint256 _collectionId,
         address _creatorAddress,
-        address _purchaserAddress
+        address _purchaserAddress,
+        address _acceptedToken
     ) public onlyCollectionContract {
         require(
             params.discount < 100,
@@ -121,7 +116,7 @@ contract PreRollNFT is ERC721Enumerable {
         uint256[] memory tokenIds = new uint256[](_amount);
         for (uint256 i = 0; i < _amount; i++) {
             _totalSupplyCount += 1;
-            _mintToken(params, _collectionId, _creatorAddress);
+            _mintToken(params, _collectionId, _creatorAddress, _acceptedToken);
             _setMappings(params);
 
             tokenIds[i] = _totalSupplyCount;
@@ -141,13 +136,14 @@ contract PreRollNFT is ERC721Enumerable {
     function _mintToken(
         MintParamsLibrary.MintParams memory params,
         uint256 _collectionId,
-        address _creatorAddress
+        address _creatorAddress,
+        address _acceptedToken
     ) private {
         Token memory newToken = Token({
             tokenId: _totalSupplyCount,
             collectionId: _collectionId,
-            acceptedTokens: params.acceptedTokens,
-            basePrices: params.basePrices,
+            basePrice: params.basePrice,
+            acceptedToken: _acceptedToken,
             creator: _creatorAddress,
             uri: params.uri,
             isBurned: false,
@@ -218,16 +214,8 @@ contract PreRollNFT is ERC721Enumerable {
         return _tokens[_tokenId].creator;
     }
 
-    function getTokenAcceptedTokens(
-        uint256 _tokenId
-    ) public view returns (address[] memory) {
-        return _tokens[_tokenId].acceptedTokens;
-    }
-
-    function getTokenBasePrices(
-        uint256 _tokenId
-    ) public view returns (uint256[] memory) {
-        return _tokens[_tokenId].basePrices;
+    function getTokenBasePrice(uint256 _tokenId) public view returns (uint256) {
+        return _tokens[_tokenId].basePrice;
     }
 
     function getTokenCollection(
@@ -258,6 +246,12 @@ contract PreRollNFT is ERC721Enumerable {
         return _printType[_tokenId];
     }
 
+    function getTokenAcceptedToken(
+        uint256 _tokenId
+    ) public view returns (address) {
+        return _tokens[_tokenId].acceptedToken;
+    }
+
     function getTokenSizes(
         uint256 _tokenId
     ) public view returns (string[] memory) {
@@ -270,27 +264,13 @@ contract PreRollNFT is ERC721Enumerable {
         return _fulfillerId[_tokenId];
     }
 
-    function setTokenAcceptedTokens(
+    function setBasePrice(
         uint256 _tokenId,
-        address[] memory _newAcceptedTokens
+        uint256 _newPrice
     ) public onlyCollectionContract {
-        address[] memory oldTokens = _tokens[_tokenId].acceptedTokens;
-        _tokens[_tokenId].acceptedTokens = _newAcceptedTokens;
-        emit TokenAcceptedTokensUpdated(
-            _tokenId,
-            oldTokens,
-            _newAcceptedTokens,
-            msg.sender
-        );
-    }
-
-    function setBasePrices(
-        uint256 _tokenId,
-        uint256[] memory _newPrices
-    ) public onlyCollectionContract {
-        uint256[] memory oldPrices = _tokens[_tokenId].basePrices;
-        _tokens[_tokenId].basePrices = _newPrices;
-        emit TokenBasePriceUpdated(_tokenId, oldPrices, _newPrices, msg.sender);
+        uint256 oldPrice = _tokens[_tokenId].basePrice;
+        _tokens[_tokenId].basePrice = _newPrice;
+        emit TokenBasePriceUpdated(_tokenId, oldPrice, _newPrice, msg.sender);
     }
 
     function setFulfillerId(
