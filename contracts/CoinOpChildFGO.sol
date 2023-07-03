@@ -20,6 +20,10 @@ contract CoinOpChildFGO is ERC1155 {
         string _tokenURI;
         uint256 _amount;
         uint256 _parentId;
+        uint256 _fulfillerId;
+        uint256[] _prices;
+        address[] _acceptedTokens;
+        address _creator;
     }
 
     mapping(uint256 => ChildTemplate) private _tokenIdToTemplate;
@@ -63,13 +67,24 @@ contract CoinOpChildFGO is ERC1155 {
         _accessControl = CoinOpAccessControl(_accessControlContract);
     }
 
-    function mint(uint256 _amount, string memory _tokenURI) public onlyParent {
+    function mint(
+        uint256 _amount,
+        uint256 _fulfillerId,
+        uint256[] memory _prices,
+        string memory _tokenURI,
+        address[] memory _acceptedTokens,
+        address _creator
+    ) public onlyParent {
         ++_tokenIdPointer;
         _tokenIdToTemplate[_tokenIdPointer] = ChildTemplate({
             _tokenId: _tokenIdPointer,
             _tokenURI: _tokenURI,
             _amount: _amount,
-            _parentId: 0
+            _parentId: 0,
+            _fulfillerId: _fulfillerId,
+            _prices: _prices,
+            _acceptedTokens: _acceptedTokens,
+            _creator: _creator
         });
 
         _mint(address(_fgoEscrow), _tokenIdPointer, _amount, "");
@@ -77,8 +92,12 @@ contract CoinOpChildFGO is ERC1155 {
     }
 
     function mintBatch(
-        uint256[] calldata _amounts,
-        string[] calldata _tokenURIs
+        uint256[] memory _amounts,
+        uint256[] memory _fulfillerId,
+        string[] memory _tokenURIs,
+        uint256[][] memory _prices,
+        address[][] memory _acceptedTokens,
+        address[] memory _creator
     ) public onlyParent {
         require(
             _tokenURIs.length == _amounts.length,
@@ -91,7 +110,11 @@ contract CoinOpChildFGO is ERC1155 {
                 _tokenId: _ids[i],
                 _tokenURI: _tokenURIs[i],
                 _amount: _amounts[i],
-                _parentId: 0
+                _parentId: 0,
+                _fulfillerId: _fulfillerId[i],
+                _prices: _prices[i],
+                _acceptedTokens: _acceptedTokens[i],
+                _creator: _creator[i]
             });
         }
         _mintBatch(address(_fgoEscrow), _ids, _amounts, "");
@@ -162,6 +185,28 @@ contract CoinOpChildFGO is ERC1155 {
         uint256 _tokenId
     ) public view returns (uint256) {
         return _tokenIdToTemplate[_tokenId]._amount;
+    }
+
+    function getChildFulfillerId(
+        uint256 _tokenId
+    ) public view returns (uint256) {
+        return _tokenIdToTemplate[_tokenId]._fulfillerId;
+    }
+
+    function getChildCreator(uint256 _tokenId) public view returns (address) {
+        return _tokenIdToTemplate[_tokenId]._creator;
+    }
+
+    function getChildPrices(
+        uint256 _tokenId
+    ) public view returns (uint256[] memory) {
+        return _tokenIdToTemplate[_tokenId]._prices;
+    }
+
+    function getChildAcceptedTokens(
+        uint256 _tokenId
+    ) public view returns (address[] memory) {
+        return _tokenIdToTemplate[_tokenId]._acceptedTokens;
     }
 
     function getChildTokenParentId(

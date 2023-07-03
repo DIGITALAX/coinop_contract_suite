@@ -15,13 +15,12 @@ contract CustomCompositeNFT is ERC721Enumerable {
     struct Token {
         uint256 tokenId;
         uint256 price;
+        uint256 productId;
         uint256 timestamp;
         uint256 fulfillerId;
         address acceptedToken;
         address creator;
         string uri;
-        string size;
-        string printType;
         bool isBurned;
     }
 
@@ -76,9 +75,8 @@ contract CustomCompositeNFT is ERC721Enumerable {
         uint256 _price,
         uint256 _amount,
         uint256 _fulfillerId,
-        string memory _uri,
-        string memory _printType,
-        string memory _size
+        uint256 _productId,
+        string memory _uri
     ) public onlyMarket {
         uint256[] memory tokenIds = new uint256[](_amount);
         for (uint256 i = 0; i < _amount; i++) {
@@ -88,9 +86,8 @@ contract CustomCompositeNFT is ERC721Enumerable {
                 _creatorAddress,
                 _price,
                 _fulfillerId,
-                _uri,
-                _printType,
-                _size
+                _productId,
+                _uri
             );
 
             tokenIds[i] = _totalSupplyCount;
@@ -105,17 +102,15 @@ contract CustomCompositeNFT is ERC721Enumerable {
         address _creatorAddress,
         uint256 _price,
         uint256 _fulfillerId,
-        string memory _uri,
-        string memory _printType,
-        string memory _size
+        uint256 _productId,
+        string memory _uri
     ) private {
         Token memory newToken = Token({
             tokenId: _totalSupplyCount,
             acceptedToken: _acceptedToken,
             price: _price,
+            productId: _productId,
             creator: _creatorAddress,
-            printType: _printType,
-            size: _size,
             uri: _uri,
             isBurned: false,
             timestamp: block.timestamp,
@@ -200,18 +195,6 @@ contract CustomCompositeNFT is ERC721Enumerable {
 
     function getTokenId(uint256 _tokenId) public view returns (uint256) {
         return _tokens[_tokenId].tokenId;
-    }
-
-    function getTokenPrintType(
-        uint256 _tokenId
-    ) public view returns (string memory) {
-        return _tokens[_tokenId].printType;
-    }
-
-    function getTokenSize(
-        uint256 _tokenId
-    ) public view returns (string memory) {
-        return _tokens[_tokenId].size;
     }
 
     function getTokenFulfillerId(

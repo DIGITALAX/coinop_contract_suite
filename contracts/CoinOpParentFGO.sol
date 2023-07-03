@@ -6,17 +6,26 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "./CoinOpChildFGO.sol";
 import "./CoinOpAccessControl.sol";
 import "./CoinOpFGOEscrow.sol";
+import "./CoinOpPayment.sol";
+import "./CoinOpFulfillment.sol";
 
 contract CoinOpParentFGO is ERC721 {
     uint256 private _totalSupply;
     CoinOpChildFGO private _childFGO;
     CoinOpAccessControl private _accessControl;
     CoinOpFGOEscrow private _fgoEscrow;
+    CoinOpFulfillment private _fulfillment;
+    CoinOpPayment private _payment;
 
     struct ParentTemplate {
         uint256 _tokenId;
-        string _tokenURI;
+        uint256 _fulfillerId;
         uint256[] _childTokenIds;
+        uint256[] _prices;
+        string _tokenURI;
+        string _printType;
+        address[] _acceptedTokens;
+        address _creator;
     }
 
     mapping(uint256 => ParentTemplate) private _tokenIdToTemplate;
@@ -51,15 +60,42 @@ contract CoinOpParentFGO is ERC721 {
         _;
     }
 
-    constructor(address _childContract) ERC721("CoinOpParentFGO", "PFGO") {
+    constructor(
+        address _childContract,
+        address _paymentContract,
+        address _fulfillmentContract
+    ) ERC721("CoinOpParentFGO", "PFGO") {
         _totalSupply = 0;
         _childFGO = CoinOpChildFGO(_childContract);
+        _payment = CoinOpPayment(_paymentContract);
+        _fulfillment = CoinOpFulfillment(_fulfillmentContract);
     }
 
     function mintFGO(
         string memory _parentURI,
-        string[] memory _childURIs
+        string memory _printType,
+        string[] memory _childURIs,
+        address[] memory _acceptedTokens,
+        address[][] memory _childAcceptedTokens,
+        uint256[] memory _prices,
+        uint256[][] memory _childPrices,
+        uint256 _fulfillerId
     ) public onlyAdmin {
+        require(
+            _prices.length == _acceptedTokens.length,
+            "CoinOpParentFGO: Prices and Accepted Tokens must be the same length."
+        );
+        require(
+            _fulfillment.getFulfillerAddress(_fulfillerId) != address(0),
+            "CoinOpFulfillment: Fulfiller Id is not valid."
+        );
+        for (uint256 i = 0; i < _acceptedTokens.length; i++) {
+            require(
+                _payment.checkIfAddressVerified(_acceptedTokens[i]),
+                "CoinOpPayment: Payment Token is Not Verified."
+            );
+        }
+
         ++_totalSupply;
 
         uint256 tokenPointer = _childFGO.getTokenPointer();
@@ -71,12 +107,24 @@ contract CoinOpParentFGO is ERC721 {
 
         _tokenIdToTemplate[_totalSupply] = ParentTemplate({
             _tokenId: _totalSupply,
+            _fulfillerId: _fulfillerId,
             _tokenURI: _parentURI,
-            _childTokenIds: _childTokenIds
+            _childTokenIds: _childTokenIds,
+            _acceptedTokens: _acceptedTokens,
+            _prices: _prices,
+            _printType: _printType,
+            _creator: msg.sender
         });
 
-        for (uint256 i; i < _childURIs.length; i++) {
-            _childFGO.mint(1, _childURIs[i]);
+        for (uint256 i = 0; i < _childURIs.length; i++) {
+            _childFGO.mint(
+                1,
+                _fulfillerId,
+                _childPrices[i],
+                _childURIs[i],
+                _childAcceptedTokens[i],
+                msg.sender
+            );
         }
 
         _safeMint(msg.sender, _totalSupply);
@@ -90,7 +138,7 @@ contract CoinOpParentFGO is ERC721 {
     }
 
     function _verifyChildTokens(uint256[] memory _childTokenIds) internal view {
-        for (uint256 i; i < _childTokenIds.length; i++) {
+        for (uint256 i = 0; i < _childTokenIds.length; i++) {
             require(
                 _childFGO.tokenExists(_childTokenIds[i]),
                 "CoinOpChildFGO: Token does not exist."
@@ -123,6 +171,36 @@ contract CoinOpParentFGO is ERC721 {
         return _tokenIdToTemplate[_tokenId]._childTokenIds;
     }
 
+    function getParentCreator(
+        uint256 _tokenId
+    ) public view virtual returns (address) {
+        return _tokenIdToTemplate[_tokenId]._creator;
+    }
+
+    function getParentFulfillerId(
+        uint256 _tokenId
+    ) public view virtual returns (uint256) {
+        return _tokenIdToTemplate[_tokenId]._fulfillerId;
+    }
+
+    function getParentAcceptedTokens(
+        uint256 _tokenId
+    ) public view virtual returns (address[] memory) {
+        return _tokenIdToTemplate[_tokenId]._acceptedTokens;
+    }
+
+    function getParentPrices(
+        uint256 _tokenId
+    ) public view virtual returns (uint256[] memory) {
+        return _tokenIdToTemplate[_tokenId]._prices;
+    }
+
+    function getParentPrintType(
+        uint256 _tokenId
+    ) public view virtual returns (string memory) {
+        return _tokenIdToTemplate[_tokenId]._printType;
+    }
+
     function getTotalSupply() public view returns (uint256) {
         return _totalSupply;
     }
@@ -139,6 +217,14 @@ contract CoinOpParentFGO is ERC721 {
         _accessControl = CoinOpAccessControl(_newAccessControl);
     }
 
+    function updatePayment(address _newPayment) public onlyAdmin {
+        _payment = CoinOpPayment(_newPayment);
+    }
+
+    function updateFulfillment(address _newFulfillment) public onlyAdmin {
+        _fulfillment = CoinOpFulfillment(_newFulfillment);
+    }
+
     function getFGOChild() public view returns (address) {
         return address(_childFGO);
     }
@@ -149,5 +235,13 @@ contract CoinOpParentFGO is ERC721 {
 
     function getAccessControl() public view returns (address) {
         return address(_accessControl);
+    }
+
+    function getPayment() public view returns (address) {
+        return address(_payment);
+    }
+
+    function getFulfiller() public view returns (address) {
+        return address(_fulfillment);
     }
 }

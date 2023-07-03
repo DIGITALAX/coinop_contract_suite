@@ -1,29 +1,21 @@
-// have the ability to add multiple different nft contract types at a time so incase more are added then more can be added to the cart
-// minted at checkout not before
-// take payment in crypto and mint to escrow with fulfillment details still on chain?
-
 // SPDX-License-Identifier: UNLICENSE
 
 pragma solidity ^0.8.9;
+
+import "./CoinOpAccessControl.sol";
+import "./CoinOpFulfillment.sol";
+import "./PreRollCollection.sol";
+import "./CustomCompositeNFT.sol";
+import "./CoinOpChildFGO.sol";
+import "./CoinOpParentFGO.sol";
 
 contract CoinOpMarket {
-
-}
-
-
-// SPDX-License-Identifier: UNLICENSE
-
-pragma solidity ^0.8.9;
-
-import "./GlobalLegendAccessControl.sol";
-import "./LegendCollection.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./LegendFulfillment.sol";
-
-contract LegendMarket {
-    LegendCollection private _legendCollection;
-    GlobalLegendAccessControl private _accessControl;
-    LegendFulfillment private _legendFulfillment;
+    PreRollCollection private _preRollCollection;
+    CoinOpAccessControl private _accessControl;
+    CoinOpFulfillment private _coinOpFulfillment;
+    CustomCompositeNFT private _customCompositeNFT;
+    CoinOpChildFGO private _childFGO;
+    CoinOpParentFGO private _parentFGO;
     uint256 private _orderSupply;
     string public symbol;
     string public name;
@@ -31,31 +23,33 @@ contract LegendMarket {
     struct Order {
         uint256 orderId;
         uint256 tokenId;
+        uint256 timestamp;
+        uint256 fulfillerId;
+        uint256 price;
+        uint256 tokenType;
+        string status;
         string details;
         address buyer;
         address chosenAddress;
-        uint256 timestamp;
-        string status;
         bool isFulfilled;
-        uint256 fulfillerId;
     }
 
-    mapping(uint256 => uint256) private _tokensSold;
-    mapping(uint256 => uint256[]) private _tokenIdsSold;
+    mapping(uint256 => uint256) private _preRollTokensSold;
+    mapping(uint256 => uint256[]) private _preRollTokenIdsSold;
     mapping(uint256 => Order) private _orders;
 
     modifier onlyAdmin() {
         require(
             _accessControl.isAdmin(msg.sender),
-            "GlobalLegendAccessControl: Only admin can perform this action"
+            "CoinOpAccessControl: Only admin can perform this action"
         );
         _;
     }
 
     modifier onlyFulfiller(uint256 _fulfillerId) {
         require(
-            _legendFulfillment.getFulfillerAddress(_fulfillerId) == msg.sender,
-            "LegendMarket: Only the fulfiller can update this status."
+            _coinOpFulfillment.getFulfillerAddress(_fulfillerId) == msg.sender,
+            "CoinOpMarket: Only the fulfiller can update this status."
         );
         _;
     }
@@ -65,21 +59,38 @@ contract LegendMarket {
         address indexed newAccessControl,
         address updater
     );
-    event LegendCollectionUpdated(
-        address indexed oldLegendCollection,
-        address indexed newLegendCollection,
+    event PreRollCollectionUpdated(
+        address indexed oldPreRollCollection,
+        address indexed newPreRollCollection,
         address updater
     );
-    event LegendFulfillmentUpdated(
-        address indexed oldLegendFulfillment,
-        address indexed newLegendFulfillment,
+    event CompositeNFTUpdated(
+        address indexed oldCompositeNFT,
+        address indexed newCompositeNFT,
+        address updater
+    );
+    event ChildFGOUpdated(
+        address indexed oldChildFGO,
+        address indexed newChildFGO,
+        address updater
+    );
+    event ParentFGOUpdated(
+        address indexed oldParentFGO,
+        address indexed newParentFGO,
+        address updater
+    );
+    event CoinOpFulfillmentUpdated(
+        address indexed oldCoinOpFulfillment,
+        address indexed newCoinOpFulfillment,
         address updater
     );
     event TokensBought(
         uint256[] collectionIds,
+        address chosenTokenAddress,
+        uint256[] tokenTypes,
+        uint256[] prices,
         uint256[] amounts,
-        address buyer,
-        address[] chosenAddress
+        address buyer
     );
     event OrderIsFulfilled(uint256 indexed _orderId, address _fulfillerAddress);
 
@@ -101,200 +112,317 @@ contract LegendMarket {
         address buyer
     );
 
-    event FulfillerAddressUpdated(
-        uint256 indexed fulfillerId,
-        address newFulfillerAddress
-    );
-
-    event FulfillerPercentUpdated(
-        uint256 indexed fulfillerId,
-        uint256 newFulfillerPercent
-    );
-
     constructor(
         address _collectionContract,
         address _accessControlContract,
         address _fulfillmentContract,
+        address _customCompositeContract,
+        address _childFGOContract,
+        address _parentFGOContract,
         string memory _symbol,
         string memory _name
     ) {
-        _legendCollection = LegendCollection(_collectionContract);
-        _accessControl = GlobalLegendAccessControl(_accessControlContract);
-        _legendFulfillment = LegendFulfillment(_fulfillmentContract);
+        _preRollCollection = PreRollCollection(_collectionContract);
+        _accessControl = CoinOpAccessControl(_accessControlContract);
+        _coinOpFulfillment = CoinOpFulfillment(_fulfillmentContract);
+        _customCompositeNFT = CustomCompositeNFT(_customCompositeContract);
+        _childFGO = CoinOpChildFGO(_childFGOContract);
+        _parentFGO = CoinOpParentFGO(_parentFGOContract);
         symbol = _symbol;
         name = _name;
         _orderSupply = 0;
     }
 
+    // collectionIds for preRoll and childId for custom
     function buyTokens(
         uint256[] memory _amounts,
         uint256[] memory _collectionIds,
-        address[] memory _chosenTokenAddresses,
-        string memory _fulfillmentDetails
+        uint256[] memory _tokenTypes,
+        string[] memory _customURIs,
+        string memory _fulfillmentDetails,
+        address _chosenTokenAddress
     ) external {
         require(
-            _chosenTokenAddresses.length == (_collectionIds.length) &&
-                _chosenTokenAddresses.length == _amounts.length,
-            "LegendMarket: Must provide an amount and token address for each collectionId."
+            _collectionIds.length == _amounts.length &&
+                _tokenTypes.length == _amounts.length,
+            "CoinOpMarket: Must provide an amount, token address and type for each collectionId."
         );
 
+        for (uint256 i = 0; i < _tokenTypes.length; i++) {
+            require(
+                _tokenTypes[i] == 0 || _tokenTypes[i] == 1,
+                "CoinOpMarket: Not a valid token type, must be custom or preroll"
+            );
+        }
+
+        uint256[] memory _prices = new uint256[](_collectionIds.length);
+        uint256[] memory _preRolls;
+        uint256[] memory _preRollsAmounts;
+
         for (uint256 i = 0; i < _collectionIds.length; i++) {
-            if (
-                _legendCollection.getCollectionGrantCollectorsOnly(
-                    _collectionIds[i]
-                )
-            ) {
-                require(
-                    IDynamicNFT(
-                        _legendCollection.getCollectionDynamicNFTAddress(
-                            _collectionIds[i]
-                        )
-                    ).getCollectorClaimedNFT(msg.sender),
-                    "LegendMarket: Must be authorized grant collector."
+            // preroll
+            if (_tokenTypes[i] == 0) {
+                (uint256 price, uint256 fulfillerId) = _preRollCollectionMint(
+                    _collectionIds[i],
+                    _chosenTokenAddress,
+                    _amounts[i]
                 );
-            }
+                _canPurchase(_chosenTokenAddress, price);
+                address creator = _preRollCollection.getCollectionCreator(
+                    _collectionIds[i]
+                );
+                _transferTokens(
+                    _chosenTokenAddress,
+                    creator,
+                    msg.sender,
+                    price,
+                    fulfillerId
+                );
+                _prices[i] = price;
+                _preRollsAmounts[i] = _amounts[i];
+                _preRolls[i] = _collectionIds[i];
 
-            require(
-                _legendCollection.getCollectionTokensMinted(_collectionIds[i]) +
-                    _amounts[i] <
-                    _legendCollection.getCollectionAmount(_collectionIds[i]),
-                "LegendMarket: No more tokens can be bought from this collection."
-            );
+                uint256[] memory _tokenIds = _preRollCollection
+                    .getCollectionTokenIds(_preRolls[i]);
 
-            bool isAccepted = false;
-            address[] memory acceptedTokens = _legendCollection
-                .getCollectionAcceptedTokens(_collectionIds[i]);
-            for (uint256 j = 0; j < acceptedTokens.length; j++) {
-                if (acceptedTokens[j] == _chosenTokenAddresses[i]) {
-                    isAccepted = true;
-                    break;
-                }
+                _preRollTokensSold[_preRolls[i]] += 1;
+                _preRollTokenIdsSold[_preRolls[i]].push(
+                    _tokenIds[_tokenIds.length - 1]
+                );
+
+                _createOrder(
+                    _chosenTokenAddress,
+                    msg.sender,
+                    price,
+                    fulfillerId,
+                    0,
+                    _tokenIds[_tokenIds.length - 1],
+                    _fulfillmentDetails
+                );
+            } else {
+                (uint256 price, uint256 fulfillerId) = _customCompositeMint(
+                    _collectionIds[i],
+                    _chosenTokenAddress
+                );
+                _canPurchase(_chosenTokenAddress, price);
+                address creator = _childFGO.getChildCreator(_collectionIds[i]);
+                _transferTokens(
+                    _chosenTokenAddress,
+                    creator,
+                    msg.sender,
+                    price,
+                    fulfillerId
+                );
+
+                _customCompositeNFT.mintBatch(
+                    _chosenTokenAddress,
+                    creator,
+                    price,
+                    _amounts[i],
+                    fulfillerId,
+                    _collectionIds[i],
+                    _customURIs[i]
+                );
+
+                _createOrder(
+                    _chosenTokenAddress,
+                    msg.sender,
+                    price,
+                    fulfillerId,
+                    1,
+                    _collectionIds[i],
+                    _fulfillmentDetails
+                );
+
+                _prices[i] = price;
             }
-            require(
-                isAccepted,
-                "LegendMarket: Chosen token address is not an accepted token for the collection"
-            );
         }
 
-        uint256[] memory prices = new uint256[](_collectionIds.length);
-
-        for (uint256 i = 0; i < _collectionIds.length; i++) {
-            address[] memory acceptedTokens = _legendCollection
-                .getCollectionAcceptedTokens(_collectionIds[i]);
-            for (uint256 j = 0; j < acceptedTokens.length; j++) {
-                if (acceptedTokens[j] == _chosenTokenAddresses[i]) {
-                    prices[i] = _legendCollection.getCollectionBasePrices(
-                        _collectionIds[i]
-                    )[j];
-
-                    if (
-                        _legendCollection.getCollectionDiscount(
-                            _collectionIds[i]
-                        ) !=
-                        0 &&
-                        IDynamicNFT(
-                            _legendCollection.getCollectionDynamicNFTAddress(
-                                _collectionIds[i]
-                            )
-                        ).getCollectorClaimedNFT(msg.sender)
-                    ) {
-                        prices[i] =
-                            prices[i] -
-                            ((prices[i] *
-                                _legendCollection.getCollectionDiscount(
-                                    _collectionIds[i]
-                                )) / 100);
-                    }
-
-                    break;
-                }
-            }
-        }
-
-        for (uint256 i = 0; i < _collectionIds.length; i++) {
-            uint256 allowance = IERC20(_chosenTokenAddresses[i]).allowance(
-                msg.sender,
-                address(this)
-            );
-
-            require(
-                allowance >= prices[i],
-                "LegendMarket: Insufficient Approval Allowance"
-            );
-
-            uint256 _fulfillerId = _legendCollection.getCollectionFulfillerId(
-                _collectionIds[i]
-            );
-            IERC20(_chosenTokenAddresses[i]).transferFrom(
-                msg.sender,
-                _legendCollection.getCollectionCreator(_collectionIds[i]),
-                prices[i] -
-                    ((prices[i] *
-                        (
-                            _legendFulfillment.getFulfillerPercent(_fulfillerId)
-                        )) / 100)
-            );
-            IERC20(_chosenTokenAddresses[i]).transferFrom(
-                msg.sender,
-                _legendFulfillment.getFulfillerAddress(_fulfillerId),
-                ((prices[i] *
-                    (_legendFulfillment.getFulfillerPercent(_fulfillerId))) /
-                    100)
-            );
-
-            _legendCollection.purchaseAndMintToken(
-                _collectionIds,
-                _amounts,
-                msg.sender
-            );
-
-            _orderSupply++;
-
-            uint256[] memory _tokenIds = _legendCollection
-                .getCollectionTokenIds(_collectionIds[i]);
-
-            Order memory newOrder = Order({
-                orderId: _orderSupply,
-                tokenId: _tokenIds[_tokenIds.length - 1],
-                details: _fulfillmentDetails,
-                buyer: msg.sender,
-                chosenAddress: _chosenTokenAddresses[i],
-                timestamp: block.timestamp,
-                status: "ordered",
-                isFulfilled: false,
-                fulfillerId: _fulfillerId
-            });
-
-            _orders[_orderSupply] = newOrder;
-
-            emit OrderCreated(
-                _orderSupply,
-                prices[i],
-                msg.sender,
-                _fulfillmentDetails,
-                _fulfillerId
-            );
-
-            _tokensSold[_collectionIds[i]] += 1;
-            _tokenIdsSold[_collectionIds[i]].push(
-                _tokenIds[_tokenIds.length - 1]
-            );
-        }
+        _preRollCollection.purchaseAndMintToken(
+            _preRolls,
+            _preRollsAmounts,
+            msg.sender
+        );
 
         emit TokensBought(
             _collectionIds,
+            _chosenTokenAddress,
+            _tokenTypes,
+            _prices,
             _amounts,
-            msg.sender,
-            _chosenTokenAddresses
+            msg.sender
         );
     }
 
-    function updateAccessControl(address _newAccessControlAddress)
-        external
-        onlyAdmin
-    {
+    function _createOrder(
+        address _chosenAddress,
+        address _buyer,
+        uint256 _price,
+        uint256 _fulfillerId,
+        uint256 _tokenType,
+        uint256 _tokenId,
+        string memory _fulfillmentDetails
+    ) internal {
+        _orderSupply++;
+
+        Order memory newOrder = Order({
+            orderId: _orderSupply,
+            tokenId: _tokenId,
+            details: _fulfillmentDetails,
+            buyer: _buyer,
+            chosenAddress: _chosenAddress,
+            tokenType: _tokenType,
+            price: _price,
+            timestamp: block.timestamp,
+            status: "ordered",
+            isFulfilled: false,
+            fulfillerId: _fulfillerId
+        });
+
+        _orders[_orderSupply] = newOrder;
+
+        emit OrderCreated(
+            _orderSupply,
+            _price,
+            _buyer,
+            _fulfillmentDetails,
+            _fulfillerId
+        );
+    }
+
+    function _transferTokens(
+        address _chosenAddress,
+        address _creator,
+        address _buyer,
+        uint256 _price,
+        uint256 _fulfillerId
+    ) internal {
+        IERC20(_chosenAddress).transferFrom(
+            _buyer,
+            _creator,
+            _price -
+                ((_price *
+                    (_coinOpFulfillment.getFulfillerPercent(_fulfillerId))) /
+                    100)
+        );
+        IERC20(_chosenAddress).transferFrom(
+            _buyer,
+            _coinOpFulfillment.getFulfillerAddress(_fulfillerId),
+            ((_price * (_coinOpFulfillment.getFulfillerPercent(_fulfillerId))) /
+                100)
+        );
+    }
+
+    function _preRollCollectionMint(
+        uint256 _collectionId,
+        address _chosenAddress,
+        uint256 _amount
+    ) internal view returns (uint256, uint256) {
+        require(
+            _preRollCollection.getCollectionTokensMinted(_collectionId) +
+                _amount <
+                _preRollCollection.getCollectionAmount(_collectionId),
+            "CoinOpMarket: No more tokens can be bought from this collection."
+        );
+
+        address[] memory acceptedTokens = _preRollCollection
+            .getCollectionAcceptedTokens(_collectionId);
+        _isAcceptedToken(acceptedTokens, _chosenAddress);
+
+        uint256 preRollPrice;
+
+        for (uint256 j = 0; j < acceptedTokens.length; j++) {
+            if (acceptedTokens[j] == _chosenAddress) {
+                preRollPrice = _preRollCollection.getCollectionBasePrices(
+                    _collectionId
+                )[j];
+
+                if (
+                    _preRollCollection.getCollectionDiscount(_collectionId) != 0
+                ) {
+                    preRollPrice =
+                        preRollPrice -
+                        ((preRollPrice *
+                            _preRollCollection.getCollectionDiscount(
+                                _collectionId
+                            )) / 100);
+                }
+
+                break;
+            }
+        }
+
+        uint256 fulfillerId = _preRollCollection.getCollectionFulfillerId(
+            _collectionId
+        );
+
+        return (preRollPrice, fulfillerId);
+    }
+
+    function _customCompositeMint(
+        uint256 _childId,
+        address _chosenAddress
+    ) internal view returns (uint256, uint256) {
+        address[] memory acceptedTokens = _childFGO.getChildAcceptedTokens(
+            _childId
+        );
+        _isAcceptedToken(acceptedTokens, _chosenAddress);
+
+        uint256 customPrice;
+
+        for (uint256 j = 0; j < acceptedTokens.length; j++) {
+            if (acceptedTokens[j] == _chosenAddress) {
+                uint256 parentId = _childFGO.getChildTokenParentId(_childId);
+                uint256 parentPrice = _parentFGO.getParentPrices(parentId)[j];
+                customPrice =
+                    _childFGO.getChildPrices(_childId)[j] +
+                    parentPrice;
+                break;
+            }
+        }
+
+        uint256 fulfillerId = _childFGO.getChildFulfillerId(_childId);
+
+        return (customPrice, fulfillerId);
+    }
+
+    function _canPurchase(
+        address _chosenAddress,
+        uint256 _price
+    ) internal view {
+        uint256 allowance = IERC20(_chosenAddress).allowance(
+            msg.sender,
+            address(this)
+        );
+
+        require(
+            allowance >= _price,
+            "CoinOpMarket: Insufficient Approval Allowance."
+        );
+    }
+
+    function _isAcceptedToken(
+        address[] memory _acceptedTokens,
+        address _chosenAddress
+    ) internal pure {
+        bool isAccepted = false;
+        for (uint256 j = 0; j < _acceptedTokens.length; j++) {
+            if (_acceptedTokens[j] == _chosenAddress) {
+                isAccepted = true;
+                break;
+            }
+        }
+        require(
+            isAccepted,
+            "CoinOpMarket: Chosen token address is not an accepted token for the collection."
+        );
+    }
+
+    function updateAccessControl(
+        address _newAccessControlAddress
+    ) external onlyAdmin {
         address oldAddress = address(_accessControl);
-        _accessControl = GlobalLegendAccessControl(_newAccessControlAddress);
+        _accessControl = CoinOpAccessControl(_newAccessControlAddress);
         emit AccessControlUpdated(
             oldAddress,
             _newAccessControlAddress,
@@ -302,57 +430,73 @@ contract LegendMarket {
         );
     }
 
-    function updateLegendCollection(address _newLegendCollectionAddress)
-        external
-        onlyAdmin
-    {
-        address oldAddress = address(_legendCollection);
-        _legendCollection = LegendCollection(_newLegendCollectionAddress);
-        emit LegendCollectionUpdated(
+    function updatePreRollCollection(
+        address _newPreRollCollectionAddress
+    ) external onlyAdmin {
+        address oldAddress = address(_preRollCollection);
+        _preRollCollection = PreRollCollection(_newPreRollCollectionAddress);
+        emit PreRollCollectionUpdated(
             oldAddress,
-            _newLegendCollectionAddress,
+            _newPreRollCollectionAddress,
             msg.sender
         );
     }
 
-    function updateLegendFulfillment(address _newLegendFulfillmentAddress)
-        external
-        onlyAdmin
-    {
-        address oldAddress = address(_legendFulfillment);
-        _legendFulfillment = LegendFulfillment(_newLegendFulfillmentAddress);
-        emit LegendFulfillmentUpdated(
+    function updateCoinOpFulfillment(
+        address _newCoinOpFulfillmentAddress
+    ) external onlyAdmin {
+        address oldAddress = address(_coinOpFulfillment);
+        _coinOpFulfillment = CoinOpFulfillment(_newCoinOpFulfillmentAddress);
+        emit CoinOpFulfillmentUpdated(
             oldAddress,
-            _newLegendFulfillmentAddress,
+            _newCoinOpFulfillmentAddress,
             msg.sender
         );
     }
 
-    function getCollectionSoldCount(uint256 _collectionId)
-        public
-        view
-        returns (uint256)
-    {
-        return _tokensSold[_collectionId];
+    function updateCompositeNFT(
+        address _newCompositeNFTAddress
+    ) external onlyAdmin {
+        address oldAddress = address(_customCompositeNFT);
+        _customCompositeNFT = CustomCompositeNFT(_newCompositeNFTAddress);
+        emit CompositeNFTUpdated(
+            oldAddress,
+            _newCompositeNFTAddress,
+            msg.sender
+        );
     }
 
-    function getTokensSoldCollection(uint256 _collectionId)
-        public
-        view
-        returns (uint256[] memory)
-    {
-        return _tokenIdsSold[_collectionId];
+    function updateChildFGO(address _newChildFGOAddress) external onlyAdmin {
+        address oldAddress = address(_childFGO);
+        _childFGO = CoinOpChildFGO(_newChildFGOAddress);
+        emit ChildFGOUpdated(oldAddress, _newChildFGOAddress, msg.sender);
+    }
+
+    function updateParentFGO(address _newParentFGOAddress) external onlyAdmin {
+        address oldAddress = address(_parentFGO);
+        _parentFGO = CoinOpParentFGO(_newParentFGOAddress);
+        emit ParentFGOUpdated(oldAddress, _newParentFGOAddress, msg.sender);
+    }
+
+    function getCollectionPreRollSoldCount(
+        uint256 _collectionId
+    ) public view returns (uint256) {
+        return _preRollTokensSold[_collectionId];
+    }
+
+    function getTokensSoldCollectionPreRoll(
+        uint256 _collectionId
+    ) public view returns (uint256[] memory) {
+        return _preRollTokenIdsSold[_collectionId];
     }
 
     function getOrderTokenId(uint256 _orderId) public view returns (uint256) {
         return _orders[_orderId].tokenId;
     }
 
-    function getOrderDetails(uint256 _orderId)
-        public
-        view
-        returns (string memory)
-    {
+    function getOrderDetails(
+        uint256 _orderId
+    ) public view returns (string memory) {
         return _orders[_orderId].details;
     }
 
@@ -360,11 +504,9 @@ contract LegendMarket {
         return _orders[_orderId].buyer;
     }
 
-    function getOrderChosenAddress(uint256 _orderId)
-        public
-        view
-        returns (address)
-    {
+    function getOrderChosenAddress(
+        uint256 _orderId
+    ) public view returns (address) {
         return _orders[_orderId].chosenAddress;
     }
 
@@ -372,11 +514,9 @@ contract LegendMarket {
         return _orders[_orderId].timestamp;
     }
 
-    function getOrderStatus(uint256 _orderId)
-        public
-        view
-        returns (string memory)
-    {
+    function getOrderStatus(
+        uint256 _orderId
+    ) public view returns (string memory) {
         return _orders[_orderId].status;
     }
 
@@ -384,40 +524,42 @@ contract LegendMarket {
         return _orders[_orderId].isFulfilled;
     }
 
-    function getOrderFulfillerId(uint256 _orderId)
-        public
-        view
-        returns (uint256)
-    {
+    function getOrderFulfillerId(
+        uint256 _orderId
+    ) public view returns (uint256) {
         return _orders[_orderId].fulfillerId;
+    }
+
+    function getOrderTokenType(uint256 _orderId) public view returns (uint256) {
+        return _orders[_orderId].tokenType;
     }
 
     function getOrderSupply() public view returns (uint256) {
         return _orderSupply;
     }
 
-    function setOrderisFulfilled(uint256 _orderId)
-        external
-        onlyFulfiller(_orders[_orderId].fulfillerId)
-    {
+    function setOrderisFulfilled(
+        uint256 _orderId
+    ) external onlyFulfiller(_orders[_orderId].fulfillerId) {
         _orders[_orderId].isFulfilled = true;
         emit OrderIsFulfilled(_orderId, msg.sender);
     }
 
-    function setOrderStatus(uint256 _orderId, string memory _status)
-        external
-        onlyFulfiller(_orders[_orderId].fulfillerId)
-    {
+    function setOrderStatus(
+        uint256 _orderId,
+        string memory _status
+    ) external onlyFulfiller(_orders[_orderId].fulfillerId) {
         _orders[_orderId].status = _status;
         emit UpdateOrderStatus(_orderId, _status, msg.sender);
     }
 
-    function setOrderDetails(uint256 _orderId, string memory _newDetails)
-        external
-    {
+    function setOrderDetails(
+        uint256 _orderId,
+        string memory _newDetails
+    ) external {
         require(
             _orders[_orderId].buyer == msg.sender,
-            "LegendMarket: Only the buyer can update their order details."
+            "CoinOpMarket: Only the buyer can update their order details."
         );
         _orders[_orderId].details = _newDetails;
         emit UpdateOrderDetails(_orderId, _newDetails, msg.sender);
@@ -427,11 +569,23 @@ contract LegendMarket {
         return address(_accessControl);
     }
 
-    function getLegendCollectionContract() public view returns (address) {
-        return address(_legendCollection);
+    function getPreRollCollectionContract() public view returns (address) {
+        return address(_preRollCollection);
     }
 
-    function getLegendFulfillmentContract() public view returns (address) {
-        return address(_legendFulfillment);
+    function getCoinOpFulfillmentContract() public view returns (address) {
+        return address(_coinOpFulfillment);
+    }
+
+    function getCompositeNFTContract() public view returns (address) {
+        return address(_customCompositeNFT);
+    }
+
+    function getChildFGOContract() public view returns (address) {
+        return address(_childFGO);
+    }
+
+    function getParentFGOContract() public view returns (address) {
+        return address(_parentFGO);
     }
 }

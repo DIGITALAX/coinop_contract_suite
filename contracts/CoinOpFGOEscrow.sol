@@ -76,15 +76,12 @@ contract CoinOpFGOEscrow is ERC721Holder {
         uint256[] memory _childTokenIds,
         bool _bool
     ) external onlyDepositer {
-        for (uint256 i; i < _childTokenIds.length; i++) {
+        for (uint256 i = 0; i < _childTokenIds.length; i++) {
             _childDeposited[_childTokenIds[i]] = _bool;
         }
     }
 
-    function releaseParent(
-        uint256 _parentTokenId,
-        address _to
-    ) external onlyAdmin {
+    function releaseParent(uint256 _parentTokenId) external onlyAdmin {
         require(
             _parentDeposited[_parentTokenId],
             "CoinOpFGOEscrow: Token must be in escrow"
@@ -94,24 +91,23 @@ contract CoinOpFGOEscrow is ERC721Holder {
             _parentTokenId
         );
 
-        for (uint256 i; i < _childTokens.length; i++) {
+        for (uint256 i = 0; i < _childTokens.length; i++) {
             _childFGO.setParentId(_childTokens[i], 0);
         }
         _parentFGO.burn(_parentTokenId);
     }
 
     function releaseChildren(
-        uint256[] memory _childTokenIds,
-        address _to
+        uint256[] memory _childTokenIds
     ) external onlyAdmin {
-        for (uint256 i; i < _childTokenIds.length; i++) {
+        for (uint256 i = 0; i < _childTokenIds.length; i++) {
             require(
                 _childDeposited[_childTokenIds[i]],
                 "CoinOpFGOEscrow: Token must be in escrow"
             );
         }
 
-        for (uint256 i; i < _childTokenIds.length; i++) {
+        for (uint256 i = 0; i < _childTokenIds.length; i++) {
             _childDeposited[_childTokenIds[i]] = false;
 
             _childFGO.burn(_childTokenIds[i], 1);

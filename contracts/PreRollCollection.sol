@@ -215,7 +215,7 @@ contract PreRollCollection {
         for (uint256 i = 0; i < params.acceptedTokens.length; i++) {
             require(
                 _coinOpPayment.checkIfAddressVerified(params.acceptedTokens[i]),
-                "PreRollCollection: Payment Token is Not Verified"
+                "CoinOpPayment: Payment Token is Not Verified"
             );
         }
 
