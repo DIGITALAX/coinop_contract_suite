@@ -8,6 +8,8 @@ import "./CoinOpAccessControl.sol";
 contract CoinOpPayment {
     CoinOpAccessControl private _accessControl;
     address[] private _verifiedPaymentTokens;
+    string public symbol;
+    string public name;
 
     mapping(address => bool) private isVerifiedPaymentToken;
 
@@ -25,8 +27,14 @@ contract CoinOpPayment {
         address updater
     );
 
-    constructor(address _accessControlAddress) {
+    constructor(
+        address _accessControlAddress,
+        string memory _name,
+        string memory _symbol
+    ) {
         _accessControl = CoinOpAccessControl(_accessControlAddress);
+        symbol = _symbol;
+        name = _name;
     }
 
     function setVerifiedPaymentTokens(

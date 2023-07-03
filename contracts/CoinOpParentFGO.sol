@@ -62,12 +62,14 @@ contract CoinOpParentFGO is ERC721 {
     constructor(
         address _childContract,
         address _paymentContract,
-        address _fulfillmentContract
-    ) ERC721("CoinOpParentFGO", "PFGO") {
+        address _fulfillmentContract,
+        address _accessControlContract
+    ) ERC721("CoinOpParentFGO", "COPFGO") {
         _totalSupply = 0;
         _childFGO = CoinOpChildFGO(_childContract);
         _payment = CoinOpPayment(_paymentContract);
         _fulfillment = CoinOpFulfillment(_fulfillmentContract);
+        _accessControl = CoinOpAccessControl(_accessControlContract);
     }
 
     function mintFGO(
@@ -192,7 +194,7 @@ contract CoinOpParentFGO is ERC721 {
         _fgoEscrow = CoinOpFGOEscrow(_newEscrowAddress);
     }
 
-    function setChildFGO(address _newChildAddress) public onlyAdmin {
+    function updateChildFGO(address _newChildAddress) public onlyAdmin {
         _childFGO = CoinOpChildFGO(_newChildAddress);
     }
 
