@@ -10,15 +10,9 @@ describe("FGO Contracts", function () {
     fulfiller: SignerWithAddress,
     childFGO: Contract,
     parentFGO: Contract,
-    coinOpOracle: Contract,
     accessControl: Contract,
-    coinOpPayment: Contract,
     coinOpFulfillment: Contract,
-    coinOpFGOEscrow: Contract,
-    monaAddress: Contract,
-    maticAddress: Contract,
-    ethAddress: Contract,
-    tetherAddress: Contract;
+    coinOpFGOEscrow: Contract;
 
   beforeEach(async () => {
     [admin, nonAdmin, fulfiller] = await ethers.getSigners();
@@ -26,9 +20,6 @@ describe("FGO Contracts", function () {
     const CoinOpAccessControl = await ethers.getContractFactory(
       "CoinOpAccessControl"
     );
-    const CoinOpPayment = await ethers.getContractFactory("CoinOpPayment");
-    const CoinOpOracle = await ethers.getContractFactory("CoinOpOracle");
-    const ERC20 = await ethers.getContractFactory("TestToken");
     const CoinOpFulfillment = await ethers.getContractFactory(
       "CoinOpFulfillment"
     );
@@ -36,33 +27,14 @@ describe("FGO Contracts", function () {
     const ParentFGO = await ethers.getContractFactory("CoinOpParentFGO");
     const CoinOpFGOEscrow = await ethers.getContractFactory("CoinOpFGOEscrow");
 
-    monaAddress = await ERC20.connect(admin).deploy();
-    maticAddress = await ERC20.connect(admin).deploy();
-    ethAddress = await ERC20.connect(admin).deploy();
-    tetherAddress = await ERC20.connect(admin).deploy();
-
     accessControl = await CoinOpAccessControl.deploy(
       "CoinOpAccessControl",
       "COAC"
-    );
-    coinOpPayment = await CoinOpPayment.deploy(
-      accessControl.address,
-      "CoinOpPayment",
-      "COPA"
     );
     coinOpFulfillment = await CoinOpFulfillment.deploy(
       accessControl.address,
       "CoinOpFulfillment",
       "COFU"
-    );
-    coinOpOracle = await CoinOpOracle.deploy(
-      accessControl.address,
-      monaAddress.address,
-      ethAddress.address,
-      maticAddress.address,
-      tetherAddress.address,
-      "COOR",
-      "CoinOpOracle"
     );
 
     childFGO = await ChildFGO.deploy(
@@ -73,7 +45,6 @@ describe("FGO Contracts", function () {
 
     parentFGO = await ParentFGO.deploy(
       childFGO.address,
-      coinOpPayment.address,
       coinOpFulfillment.address,
       accessControl.address
     );
@@ -98,8 +69,12 @@ describe("FGO Contracts", function () {
         "parentURI",
         "hoodie",
         ["childuri1", "childuri2", "childuri3"],
-        100,
-        [20, 30, 50],
+        "100000000000000000000",
+        [
+          "20000000000000000000",
+          "30000000000000000000",
+          "50000000000000000000",
+        ],
         1
       );
     });
@@ -118,7 +93,7 @@ describe("FGO Contracts", function () {
       it("sets parent token properties correctly", async () => {
         expect(await parentFGO.getParentPrintType(1)).to.equal("hoodie");
         expect(await parentFGO.getParentPrice(1)).to.deep.equal(
-          BigNumber.from("100")
+          BigNumber.from("100000000000000000000")
         );
         expect(await parentFGO.getParentFulfillerId(1)).to.deep.equal(
           BigNumber.from("1")
@@ -143,13 +118,13 @@ describe("FGO Contracts", function () {
         );
 
         expect(await childFGO.getChildPrice(1)).to.deep.equal(
-          BigNumber.from("20")
+          BigNumber.from("20000000000000000000")
         );
         expect(await childFGO.getChildPrice(2)).to.deep.equal(
-          BigNumber.from("30")
+          BigNumber.from("30000000000000000000")
         );
         expect(await childFGO.getChildPrice(3)).to.deep.equal(
-          BigNumber.from("50")
+          BigNumber.from("50000000000000000000")
         );
 
         expect(await childFGO.getChildCreator(1)).to.equal(admin.address);
@@ -225,8 +200,12 @@ describe("FGO Contracts", function () {
               "parentURI",
               "hoodie",
               ["childuri1", "childuri2", "childuri3"],
-              100,
-              [20, 30, 50],
+              "100000000000000000000",
+              [
+                "20000000000000000000",
+                "30000000000000000000",
+                "50000000000000000000",
+              ],
               1
             );
         } catch (err: any) {
@@ -241,8 +220,12 @@ describe("FGO Contracts", function () {
             "parentURI",
             "hoodie",
             ["childuri1", "childuri2", "childuri3"],
-            100,
-            [20, 30, 50],
+            "100000000000000000000",
+            [
+              "20000000000000000000",
+              "30000000000000000000",
+              "50000000000000000000",
+            ],
             2
           );
         } catch (err: any) {
@@ -257,8 +240,12 @@ describe("FGO Contracts", function () {
             "parentURI",
             "hoodie",
             ["childuri1", "childuri3"],
-            100,
-            [20, 30, 50],
+            "100000000000000000000",
+            [
+              "20000000000000000000",
+              "30000000000000000000",
+              "50000000000000000000",
+            ],
             2
           );
         } catch (err: any) {
@@ -275,8 +262,12 @@ describe("FGO Contracts", function () {
           "parentURI",
           "hoodie",
           ["childuri1", "childuri2", "childuri3"],
-          100,
-          [20, 30, 50],
+          "100000000000000000000",
+          [
+            "20000000000000000000",
+            "30000000000000000000",
+            "50000000000000000000",
+          ],
           1
         );
         await coinOpFGOEscrow.releaseParent(2);
@@ -329,8 +320,8 @@ describe("FGO Contracts", function () {
           "parentURI",
           "hoodie",
           ["childuri1", "childuri2"],
-          100,
-          [20, 30],
+          "100000000000000000000",
+          ["20000000000000000000", "30000000000000000000"],
           1
         );
 
@@ -346,7 +337,6 @@ describe("FGO Contracts", function () {
     describe("updates all contracts", () => {
       let newChildFGO: Contract,
         newAccessControl: Contract,
-        newCoinOpPayment: Contract,
         newCoinOpFulfillment: Contract,
         newCoinOpFGOEscrow: Contract;
 
@@ -354,7 +344,6 @@ describe("FGO Contracts", function () {
         const CoinOpAccessControl = await ethers.getContractFactory(
           "CoinOpAccessControl"
         );
-        const CoinOpPayment = await ethers.getContractFactory("CoinOpPayment");
         const CoinOpFulfillment = await ethers.getContractFactory(
           "CoinOpFulfillment"
         );
@@ -366,11 +355,6 @@ describe("FGO Contracts", function () {
         newAccessControl = await CoinOpAccessControl.deploy(
           "CoinOpAccessControl",
           "COAC"
-        );
-        newCoinOpPayment = await CoinOpPayment.deploy(
-          accessControl.address,
-          "CoinOpPayment",
-          "COPA"
         );
         newCoinOpFulfillment = await CoinOpFulfillment.deploy(
           accessControl.address,
@@ -414,10 +398,6 @@ describe("FGO Contracts", function () {
           newCoinOpFulfillment.address
         );
       });
-      it("updates payment", async () => {
-        await parentFGO.updatePayment(newCoinOpPayment.address);
-        expect(await parentFGO.getPayment()).to.equal(newCoinOpPayment.address);
-      });
       it("only admin can update contracts", async () => {
         try {
           await parentFGO
@@ -428,16 +408,6 @@ describe("FGO Contracts", function () {
             "CoinOpAccessControl: Only admin can perform this action"
           );
         }
-        try {
-          await parentFGO
-            .connect(nonAdmin)
-            .updatePayment(coinOpPayment.address);
-        } catch (err: any) {
-          expect(err.message).to.include(
-            "CoinOpAccessControl: Only admin can perform this action"
-          );
-        }
-
         try {
           await parentFGO
             .connect(nonAdmin)
@@ -474,8 +444,12 @@ describe("FGO Contracts", function () {
           "parentURI",
           "hoodie",
           ["childuri1", "childuri2", "childuri3"],
-          100,
-          [20, 30, 50],
+          "100000000000000000000",
+          [
+            "20000000000000000000",
+            "30000000000000000000",
+            "50000000000000000000",
+          ],
           1
         );
         const receipt = await tx.wait();
@@ -538,8 +512,12 @@ describe("FGO Contracts", function () {
           "parentURI",
           "hoodie",
           ["childuri1", "childuri2", "childuri3"],
-          100,
-          [20, 30, 50],
+          "100000000000000000000",
+          [
+            "20000000000000000000",
+            "30000000000000000000",
+            "50000000000000000000",
+          ],
           1
         );
         await coinOpFGOEscrow.releaseChildren([1, 2]);
@@ -594,8 +572,8 @@ describe("FGO Contracts", function () {
           "parentURI",
           "hoodie",
           ["childuri1", "childuri2"],
-          100,
-          [20, 30],
+          "100000000000000000000",
+          ["20000000000000000000", "30000000000000000000"],
           1
         );
 
@@ -628,7 +606,6 @@ describe("FGO Contracts", function () {
         );
         newParentFGO = await ParentFGO.deploy(
           childFGO.address,
-          coinOpPayment.address,
           coinOpFulfillment.address,
           accessControl.address
         );
@@ -694,8 +671,12 @@ describe("FGO Contracts", function () {
           "parentURI",
           "hoodie",
           ["childuri1", "childuri2", "childuri3"],
-          100,
-          [20, 30, 50],
+          "100000000000000000000",
+          [
+            "20000000000000000000",
+            "30000000000000000000",
+            "50000000000000000000",
+          ],
           1
         );
         const receipt = await tx.wait();
@@ -719,14 +700,18 @@ describe("FGO Contracts", function () {
       });
 
       it("emits event on burn", async () => {
-         await parentFGO.mintFGO(
-            "parentURI",
-            "hoodie",
-            ["childuri1", "childuri2", "childuri3"],
-            100,
-            [20, 30, 50],
-            1
-          );
+        await parentFGO.mintFGO(
+          "parentURI",
+          "hoodie",
+          ["childuri1", "childuri2", "childuri3"],
+          "100000000000000000000",
+          [
+            "20000000000000000000",
+            "30000000000000000000",
+            "50000000000000000000",
+          ],
+          1
+        );
         const tx = await coinOpFGOEscrow.releaseChildren([3]);
         const receipt = await tx.wait();
         const event = receipt.events.find(

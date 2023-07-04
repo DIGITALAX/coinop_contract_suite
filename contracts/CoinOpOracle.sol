@@ -34,10 +34,10 @@ contract CoinOpOracle {
     );
 
     event OracleUpdated(
-        uint256 _monaPrice,
-        uint256 _ethPrice,
-        uint256 _maticPrice,
-        uint256 _tetherPrice
+        uint256 monaPrice,
+        uint256 ethPrice,
+        uint256 maticPrice,
+        uint256 tetherPrice
     );
 
     constructor(
@@ -92,6 +92,22 @@ contract CoinOpOracle {
             _newAccessControlAddress,
             msg.sender
         );
+    }
+
+    function getTetherAddress() public view returns (address) {
+        return _tetherAddress;
+    }
+
+    function getMonaAddress() public view returns (address) {
+        return _monaAddress;
+    }
+
+    function getEthAddress() public view returns (address) {
+        return _ethAddress;
+    }
+
+    function getMaticAddress() public view returns (address) {
+        return _maticAddress;
     }
 
     function getMonaPriceUSD() public view returns (uint256) {

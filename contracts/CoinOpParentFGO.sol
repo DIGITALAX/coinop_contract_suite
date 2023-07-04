@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "./CoinOpChildFGO.sol";
 import "./CoinOpAccessControl.sol";
 import "./CoinOpFGOEscrow.sol";
-import "./CoinOpPayment.sol";
 import "./CoinOpFulfillment.sol";
 
 contract CoinOpParentFGO is ERC721 {
@@ -15,7 +14,6 @@ contract CoinOpParentFGO is ERC721 {
     CoinOpAccessControl private _accessControl;
     CoinOpFGOEscrow private _fgoEscrow;
     CoinOpFulfillment private _fulfillment;
-    CoinOpPayment private _payment;
 
     struct ParentTemplate {
         uint256 _tokenId;
@@ -56,13 +54,11 @@ contract CoinOpParentFGO is ERC721 {
 
     constructor(
         address _childContract,
-        address _paymentContract,
         address _fulfillmentContract,
         address _accessControlContract
     ) ERC721("CoinOpParentFGO", "COPFGO") {
         _totalSupply = 0;
         _childFGO = CoinOpChildFGO(_childContract);
-        _payment = CoinOpPayment(_paymentContract);
         _fulfillment = CoinOpFulfillment(_fulfillmentContract);
         _accessControl = CoinOpAccessControl(_accessControlContract);
     }
@@ -190,10 +186,6 @@ contract CoinOpParentFGO is ERC721 {
         _accessControl = CoinOpAccessControl(_newAccessControl);
     }
 
-    function updatePayment(address _newPayment) public onlyAdmin {
-        _payment = CoinOpPayment(_newPayment);
-    }
-
     function updateFulfillment(address _newFulfillment) public onlyAdmin {
         _fulfillment = CoinOpFulfillment(_newFulfillment);
     }
@@ -208,10 +200,6 @@ contract CoinOpParentFGO is ERC721 {
 
     function getAccessControl() public view returns (address) {
         return address(_accessControl);
-    }
-
-    function getPayment() public view returns (address) {
-        return address(_payment);
     }
 
     function getFulfiller() public view returns (address) {

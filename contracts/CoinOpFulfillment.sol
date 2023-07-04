@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract CoinOpFulfillment {
     CoinOpAccessControl private _accessControl;
     uint256 private _fullfillerCount;
+    uint256 private _activeFulfillers;
     string public symbol;
     string public name;
 
@@ -23,12 +24,6 @@ contract CoinOpFulfillment {
         address indexed oldAccessControl,
         address indexed newAccessControl,
         address updater
-    );
-
-    event OrderCreated(
-        uint256 indexed orderId,
-        address buyer,
-        string fulfillmentInformation
     );
 
     event FulfillerAddressUpdated(
@@ -83,6 +78,7 @@ contract CoinOpFulfillment {
             "CoinOpFulfillment: Percent can not be greater than 100."
         );
         _fullfillerCount++;
+        _activeFulfillers++;
 
         Fulfiller memory newFulfiller = Fulfiller({
             fulfillerId: _fullfillerCount,
@@ -123,22 +119,21 @@ contract CoinOpFulfillment {
         emit FulfillerPercentUpdated(_fulfillerId, _fulfillerPercent);
     }
 
-    function getFulfillerPercent(
-        uint256 _fulfillerId
-    ) public view returns (uint256) {
-        return _fulfillers[_fulfillerId].fulfillerPercent;
-    }
-
     function updateFulfillerAddress(
         uint256 _fulfillerId,
-        address _fulfillerAddress
+        address _newFulfillerAddress
     ) public onlyFulfiller(_fulfillerId) {
         require(
-            _fulfillerId <= _fullfillerCount,
+            _fulfillers[_fulfillerId].fulfillerId != 0,
             "CoinOpFulfillment: Fulfiller does not exist."
         );
-        _fulfillers[_fulfillerId].fulfillerAddress = _fulfillerAddress;
-        emit FulfillerAddressUpdated(_fulfillerId, _fulfillerAddress);
+        _fulfillers[_fulfillerId].fulfillerAddress = _newFulfillerAddress;
+        emit FulfillerAddressUpdated(_fulfillerId, _newFulfillerAddress);
+    }
+
+    function removeFulfiller(uint256 _fulfillerId) public onlyAdmin {
+        delete _fulfillers[_fulfillerId];
+        _activeFulfillers -= 1;
     }
 
     function getFulfillerAddress(
@@ -148,7 +143,13 @@ contract CoinOpFulfillment {
     }
 
     function getFulfillerCount() public view returns (uint256) {
-        return _fullfillerCount;
+        return _activeFulfillers;
+    }
+
+    function getFulfillerPercent(
+        uint256 _fulfillerId
+    ) public view returns (uint256) {
+        return _fulfillers[_fulfillerId].fulfillerPercent;
     }
 
     function getAccessControlContract() public view returns (address) {

@@ -190,7 +190,8 @@ contract CoinOpMarket {
             (uint256 price, uint256 fulfillerId) = _preRollCollectionMint(
                 params.preRollIds[i],
                 exchangeRate,
-                params.preRollAmounts[i]
+                params.preRollAmounts[i],
+                params.chosenTokenAddress
             );
             _canPurchase(params.chosenTokenAddress, price);
             address creator = _preRollCollection.getCollectionCreator(
@@ -227,7 +228,8 @@ contract CoinOpMarket {
         for (uint256 i = 0; i < params.customIds.length; i++) {
             (uint256 price, uint256 fulfillerId) = _customCompositeMint(
                 params.customIds[i],
-                exchangeRate
+                exchangeRate,
+                params.chosenTokenAddress
             );
             _canPurchase(params.chosenTokenAddress, price);
             address creator = _childFGO.getChildCreator(params.customIds[i]);
@@ -342,7 +344,8 @@ contract CoinOpMarket {
     function _preRollCollectionMint(
         uint256 _collectionId,
         uint256 _exchangeRate,
-        uint256 _amount
+        uint256 _amount,
+        address _chosenTokenAddress
     ) internal view returns (uint256, uint256) {
         require(
             _preRollCollection.getCollectionTokensMinted(_collectionId) +
@@ -355,7 +358,11 @@ contract CoinOpMarket {
             _collectionId
         );
 
-        uint256 preRollPrice = basePrice / _exchangeRate;
+        uint256 preRollPrice = _calculateAmount(
+            basePrice,
+            _exchangeRate,
+            _chosenTokenAddress
+        );
 
         if (_preRollCollection.getCollectionDiscount(_collectionId) != 0) {
             preRollPrice =
@@ -374,13 +381,18 @@ contract CoinOpMarket {
 
     function _customCompositeMint(
         uint256 _childId,
-        uint256 _exchangeRate
+        uint256 _exchangeRate,
+        address _chosenTokenAddress
     ) internal view returns (uint256, uint256) {
         uint256 parentId = _childFGO.getChildTokenParentId(_childId);
         uint256 parentPrice = _parentFGO.getParentPrice(parentId);
         uint256 basePrice = _childFGO.getChildPrice(_childId) + parentPrice;
 
-        uint256 customPrice = basePrice / _exchangeRate;
+        uint256 customPrice = _calculateAmount(
+            basePrice,
+            _exchangeRate,
+            _chosenTokenAddress
+        );
 
         uint256 fulfillerId = _childFGO.getChildFulfillerId(_childId);
 
@@ -400,6 +412,18 @@ contract CoinOpMarket {
             allowance >= _price,
             "CoinOpMarket: Insufficient Approval Allowance."
         );
+    }
+
+    function _calculateAmount(
+        uint256 _amountInWei,
+        uint256 _exchangeRate,
+        address _tokenAddress
+    ) internal view returns (uint256) {
+        uint256 tokenAmount = _amountInWei / _exchangeRate;
+        if (_tokenAddress == _oracle.getTetherAddress()) {
+            tokenAmount = tokenAmount / (10 ** 12);
+        }
+        return tokenAmount;
     }
 
     function updateAccessControl(

@@ -25,16 +25,6 @@ contract CoinOpFGOEscrow is ERC721Holder, ERC1155Holder {
         address indexed newAccessControl,
         address updater
     );
-    event CoinOPChildFGOUpdated(
-        address indexed oldCoinOPChildFGO,
-        address indexed newCoinOPChildFGO,
-        address updater
-    );
-    event CoinOPParentFGOUpdated(
-        address indexed oldCoinOPParentFGO,
-        address indexed newCoinOPParentFGO,
-        address updater
-    );
     event ParentReleased(uint256 parentTokenId);
     event ChildrenReleased(uint256[] childTokenIds);
 
@@ -64,7 +54,7 @@ contract CoinOpFGOEscrow is ERC721Holder, ERC1155Holder {
         require(
             msg.sender == address(_parentFGO) ||
                 msg.sender == address(_childFGO),
-            "CoinOpFGOEscrow: Only the Chromadin Collection or NFT contract can call this function"
+            "CoinOpFGOEscrow: Only a verified depositer contract can call this function"
         );
         _;
     }

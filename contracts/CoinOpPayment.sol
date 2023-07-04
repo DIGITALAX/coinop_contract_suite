@@ -27,6 +27,8 @@ contract CoinOpPayment {
         address updater
     );
 
+    event PaymentTokensUpdated(address[] newPaymentTokens);
+
     constructor(
         address _accessControlAddress,
         string memory _name,
@@ -49,6 +51,8 @@ contract CoinOpPayment {
             isVerifiedPaymentToken[_paymentTokens[i]] = true;
             _verifiedPaymentTokens.push(_paymentTokens[i]);
         }
+
+        emit PaymentTokensUpdated(_verifiedPaymentTokens);
     }
 
     function getVerifiedPaymentTokens() public view returns (address[] memory) {
