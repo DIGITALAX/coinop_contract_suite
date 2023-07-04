@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./CoinOpChildFGO.sol";
 import "./CoinOpParentFGO.sol";
 import "./CoinOpAccessControl.sol";
+import "hardhat/console.sol";
 
 contract CoinOpFGOEscrow is ERC721Holder, ERC1155Holder {
     CoinOpAccessControl private _accessControl;
@@ -107,8 +108,6 @@ contract CoinOpFGOEscrow is ERC721Holder, ERC1155Holder {
         for (uint256 i = 0; i < _childTokenIds.length; i++) {
             _childDeposited[_childTokenIds[i]] = false;
 
-            _childFGO.burn(_childTokenIds[i], 1);
-
             uint256 parentId = _childFGO.getChildTokenParentId(
                 _childTokenIds[i]
             );
@@ -117,9 +116,7 @@ contract CoinOpFGOEscrow is ERC721Holder, ERC1155Holder {
                 parentId
             );
 
-            uint256[] memory newChildTokens = new uint256[](
-                childTokens.length - 1
-            );
+            uint256[] memory newChildTokens = new uint256[](childTokens.length);
             uint256 index = 0;
 
             for (uint256 j = 0; j < childTokens.length; j++) {
@@ -129,7 +126,14 @@ contract CoinOpFGOEscrow is ERC721Holder, ERC1155Holder {
                 }
             }
 
-            _parentFGO.setChildTokenIds(parentId, newChildTokens);
+            uint256[] memory finalChildTokens = new uint256[](index);
+            for (uint256 k = 0; k < index; k++) {
+                finalChildTokens[k] = newChildTokens[k];
+            }
+
+            _parentFGO.setChildTokenIds(parentId, finalChildTokens);
+
+            _childFGO.burn(_childTokenIds[i], 1);
         }
 
         emit ChildrenReleased(_childTokenIds);

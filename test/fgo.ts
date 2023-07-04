@@ -92,7 +92,7 @@ describe("FGO Contracts", function () {
     await coinOpFulfillment.createFulfiller(10, fulfiller.address);
   });
 
-  xdescribe("Parent FGO", async () => {
+  describe("Parent FGO", async () => {
     beforeEach(async () => {
       await parentFGO.mintFGO(
         "parentURI",
@@ -510,27 +510,231 @@ describe("FGO Contracts", function () {
     });
   });
 
-  xdescribe("Child FGO", async () => {
+  describe("Child FGO", async () => {
     describe("mints a child token", () => {
-      it("only the parent can mint", async () => {});
-      it("only parent or escrow can set the parent id", async () => {});
+      it("only the parent can mint", async () => {
+        try {
+          await childFGO.mint(1, 1, 10, 1, "childuri1", admin.address);
+        } catch (err: any) {
+          expect(err.message).to.include(
+            "CoinOpAccessControl: Only the Parent contract can perform this action"
+          );
+        }
+      });
+      it("only escrow can set the parent id", async () => {
+        try {
+          await childFGO.setParentId(1, 1);
+        } catch (err: any) {
+          expect(err.message).to.include(
+            "CoinOpAccessControl: Only the Escrow contract can perform this action"
+          );
+        }
+      });
     });
 
     describe("burns a child", () => {
-      it("it burns a child and removes it from parent", async () => {});
-      it("only the parent can set the new child ids", async () => {});
-      it("rejects burn if token not in escrow", async () => {});
-      it("only the escrow can burn", async () => {});
-      it("correctly mints again after burn", async () => {});
+      beforeEach(async () => {
+        await parentFGO.mintFGO(
+          "parentURI",
+          "hoodie",
+          ["childuri1", "childuri2", "childuri3"],
+          100,
+          [20, 30, 50],
+          1
+        );
+        await coinOpFGOEscrow.releaseChildren([1, 2]);
+      });
+      it("it burns a child and removes it from parent", async () => {
+        expect(await parentFGO.getParentChildTokens(1)).to.deep.equal([
+          BigNumber.from("3"),
+        ]);
+        expect(
+          await childFGO.balanceOf(coinOpFGOEscrow.address, 1)
+        ).to.deep.equal(BigNumber.from("0"));
+        expect(
+          await childFGO.balanceOf(coinOpFGOEscrow.address, 2)
+        ).to.deep.equal(BigNumber.from("0"));
+        expect(
+          await childFGO.balanceOf(coinOpFGOEscrow.address, 3)
+        ).to.deep.equal(BigNumber.from("1"));
+
+        expect(await coinOpFGOEscrow.getChildDeposited(1)).to.be.false;
+        expect(await coinOpFGOEscrow.getChildDeposited(2)).to.be.false;
+        expect(await coinOpFGOEscrow.getChildDeposited(3)).to.be.true;
+      });
+      it("only the escrow can set the new child ids", async () => {
+        try {
+          await parentFGO.setChildTokenIds(1, [2, 3]);
+        } catch (err: any) {
+          expect(err.message).to.include(
+            "CoinOpAccessControl: Only the Escrow contract can perform this action"
+          );
+        }
+      });
+      it("rejects burn if token not in escrow", async () => {
+        try {
+          await coinOpFGOEscrow.releaseChildren([6, 7]);
+        } catch (err: any) {
+          expect(err.message).to.include(
+            "CoinOpFGOEscrow: Token must be in escrow"
+          );
+        }
+      });
+      it("only the escrow can burn", async () => {
+        try {
+          await childFGO.burn(3, 1);
+        } catch (err: any) {
+          expect(err.message).to.include(
+            "CoinOpAccessControl: Only the Escrow contract can perform this action"
+          );
+        }
+      });
+      it("correctly mints again after burn", async () => {
+        await parentFGO.mintFGO(
+          "parentURI",
+          "hoodie",
+          ["childuri1", "childuri2"],
+          100,
+          [20, 30],
+          1
+        );
+
+        expect(await parentFGO.getTotalSupply()).to.deep.equal(
+          BigNumber.from("2")
+        );
+        expect(await childFGO.getTokenPointer()).to.deep.equal(
+          BigNumber.from("5")
+        );
+      });
     });
 
     describe("updates all contracts", () => {
-      it("updates access control", async () => {});
-      it("updates escrow", async () => {});
-      it("updates parent", async () => {});
-      it("only admin can update contracts", async () => {});
+      let newAccessControl: Contract,
+        newParentFGO: Contract,
+        newCoinOpFGOEscrow: Contract;
+
+      beforeEach(async () => {
+        const CoinOpAccessControl = await ethers.getContractFactory(
+          "CoinOpAccessControl"
+        );
+        const ParentFGO = await ethers.getContractFactory("CoinOpParentFGO");
+        const CoinOpFGOEscrow = await ethers.getContractFactory(
+          "CoinOpFGOEscrow"
+        );
+
+        newAccessControl = await CoinOpAccessControl.deploy(
+          "CoinOpAccessControl",
+          "COAC"
+        );
+        newParentFGO = await ParentFGO.deploy(
+          childFGO.address,
+          coinOpPayment.address,
+          coinOpFulfillment.address,
+          accessControl.address
+        );
+
+        newCoinOpFGOEscrow = await CoinOpFGOEscrow.deploy(
+          parentFGO.address,
+          childFGO.address,
+          accessControl.address,
+          "COEFGO",
+          "CoinOpFGOEscrow"
+        );
+      });
+      it("updates access control", async () => {
+        await childFGO.updateAccessControl(newAccessControl.address);
+        expect(await childFGO.getAccessControl()).to.equal(
+          newAccessControl.address
+        );
+      });
+      it("updates escrow", async () => {
+        await childFGO.setFGOEscrow(newCoinOpFGOEscrow.address);
+        expect(await childFGO.getFGOEscrow()).to.equal(
+          newCoinOpFGOEscrow.address
+        );
+      });
+      it("updates parent", async () => {
+        await childFGO.setParentFGO(newParentFGO.address);
+        expect(await childFGO.getFGOParent()).to.equal(newParentFGO.address);
+      });
+      it("only admin can update contracts", async () => {
+        try {
+          await childFGO
+            .connect(nonAdmin)
+            .updateAccessControl(accessControl.address);
+        } catch (err: any) {
+          expect(err.message).to.include(
+            "CoinOpAccessControl: Only admin can perform this action"
+          );
+        }
+
+        try {
+          await childFGO.connect(nonAdmin).setParentFGO(childFGO.address);
+        } catch (err: any) {
+          expect(err.message).to.include(
+            "CoinOpAccessControl: Only admin can perform this action"
+          );
+        }
+
+        try {
+          await childFGO
+            .connect(nonAdmin)
+            .setFGOEscrow(coinOpFGOEscrow.address);
+        } catch (err: any) {
+          expect(err.message).to.include(
+            "CoinOpAccessControl: Only admin can perform this action"
+          );
+        }
+      });
     });
 
-    describe("emits all events", () => {});
+    describe("emits all events", () => {
+      it("emits event on mint", async () => {
+        const tx = await parentFGO.mintFGO(
+          "parentURI",
+          "hoodie",
+          ["childuri1", "childuri2", "childuri3"],
+          100,
+          [20, 30, 50],
+          1
+        );
+        const receipt = await tx.wait();
+        const event = receipt.events.find(
+          (event: any) => event.event === "FGOTemplateCreated"
+        );
+        const eventData = await event.args;
+
+        expect(eventData.parentTokenId).to.deep.equal(BigNumber.from("1"));
+        expect(eventData.parentURI).to.equal("parentURI");
+        expect(eventData.childTokenIds).to.deep.equal([
+          BigNumber.from("1"),
+          BigNumber.from("2"),
+          BigNumber.from("3"),
+        ]);
+        expect(eventData.childTokenURIs).to.deep.equal([
+          "childuri1",
+          "childuri2",
+          "childuri3",
+        ]);
+      });
+
+      it("emits event on burn", async () => {
+         await parentFGO.mintFGO(
+            "parentURI",
+            "hoodie",
+            ["childuri1", "childuri2", "childuri3"],
+            100,
+            [20, 30, 50],
+            1
+          );
+        const tx = await coinOpFGOEscrow.releaseChildren([3]);
+        const receipt = await tx.wait();
+        const event = receipt.events.find(
+          (event: any) => event.event === "ChildrenReleased"
+        );
+        const eventData = await event.args;
+        expect(eventData.childTokenIds).to.deep.equal([BigNumber.from("3")]);
+      });
+    });
   });
 });
