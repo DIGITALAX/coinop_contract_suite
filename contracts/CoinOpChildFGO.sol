@@ -29,7 +29,7 @@ contract CoinOpChildFGO is ERC1155 {
 
     event ChildTemplateCreated(uint256 indexed tokenId, string tokenURI);
     event ParentIdAdded(uint256 indexed tokenId, uint256 parentId);
-    event ChildBurned(uint indexed childTokenId);
+    event ChildBurned(uint256 childTokenId);
 
     modifier onlyAdmin() {
         require(
@@ -70,6 +70,7 @@ contract CoinOpChildFGO is ERC1155 {
         uint256 _amount,
         uint256 _fulfillerId,
         uint256 _price,
+        uint256 _parentId,
         string memory _tokenURI,
         address _creator
     ) public onlyParent {
@@ -78,41 +79,15 @@ contract CoinOpChildFGO is ERC1155 {
             _tokenId: _tokenIdPointer,
             _tokenURI: _tokenURI,
             _amount: _amount,
-            _parentId: 0,
+            _parentId: _parentId,
             _fulfillerId: _fulfillerId,
             _price: _price,
             _creator: _creator
         });
 
         _mint(address(_fgoEscrow), _tokenIdPointer, _amount, "");
+        _fgoEscrow.depositChild(_tokenIdPointer);
         emit ChildTemplateCreated(_tokenIdPointer, _tokenURI);
-    }
-
-    function mintBatch(
-        uint256[] memory _amounts,
-        uint256[] memory _fulfillerId,
-        string[] memory _tokenURIs,
-        uint256[] memory _price,
-        address[] memory _creator
-    ) public onlyParent {
-        require(
-            _tokenURIs.length == _amounts.length,
-            "CoinOpChildFGO: All arrays must be the same length"
-        );
-        uint256[] memory _ids = new uint[](_tokenURIs.length);
-        for (uint i = 0; i < _ids.length; i++) {
-            _ids[i] = ++_tokenIdPointer;
-            _tokenIdToTemplate[_tokenIdPointer] = ChildTemplate({
-                _tokenId: _ids[i],
-                _tokenURI: _tokenURIs[i],
-                _amount: _amounts[i],
-                _parentId: 0,
-                _fulfillerId: _fulfillerId[i],
-                _price: _price[i],
-                _creator: _creator[i]
-            });
-        }
-        _mintBatch(address(_fgoEscrow), _ids, _amounts, "");
     }
 
     function burn(uint256 _id, uint256 _amount) public onlyEscrow {
@@ -140,7 +115,7 @@ contract CoinOpChildFGO is ERC1155 {
     function setParentId(
         uint256 _tokenId,
         uint256 _parentId
-    ) external onlyParent {
+    ) external onlyEscrow {
         _tokenIdToTemplate[_tokenId]._parentId = _parentId;
 
         emit ParentIdAdded(_tokenId, _parentId);
@@ -192,9 +167,7 @@ contract CoinOpChildFGO is ERC1155 {
         return _tokenIdToTemplate[_tokenId]._creator;
     }
 
-    function getChildPrice(
-        uint256 _tokenId
-    ) public view returns (uint256) {
+    function getChildPrice(uint256 _tokenId) public view returns (uint256) {
         return _tokenIdToTemplate[_tokenId]._price;
     }
 

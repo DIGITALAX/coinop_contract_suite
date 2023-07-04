@@ -24,12 +24,11 @@ contract CoinOpAccessControl {
 
     constructor(
         string memory _name,
-        string memory _symbol,
-        address _externalOwner
+        string memory _symbol
     ) {
         symbol = _symbol;
         name = _name;
-        admins[_externalOwner] = true;
+        admins[msg.sender] = true;
     }
 
     function addAdmin(address _admin) external onlyAdmin {

@@ -30,18 +30,13 @@ contract CoinOpParentFGO is ERC721 {
     mapping(uint256 => ParentTemplate) private _tokenIdToTemplate;
 
     event FGOTemplateCreated(
-        uint indexed parentTokenId,
+        uint256 indexed parentTokenId,
         string parentURI,
         uint256[] childTokenIds,
         string[] childTokenURIs
     );
 
-    event ParentBurned(uint indexed parentTokenId);
-
-    modifier childTokensModifier(uint256[] calldata _childTokenIds) {
-        _verifyChildTokens(_childTokenIds);
-        _;
-    }
+    event ParentBurned(uint256 parentTokenId);
 
     modifier onlyAdmin() {
         require(
@@ -113,12 +108,14 @@ contract CoinOpParentFGO is ERC721 {
                 1,
                 _fulfillerId,
                 _childPrices[i],
+                _totalSupply,
                 _childURIs[i],
                 msg.sender
             );
         }
 
-        _safeMint(msg.sender, _totalSupply);
+        _safeMint(address(_fgoEscrow), _totalSupply);
+        _fgoEscrow.depositParent(_totalSupply);
 
         emit FGOTemplateCreated(
             _totalSupply,
@@ -126,15 +123,6 @@ contract CoinOpParentFGO is ERC721 {
             _childTokenIds,
             _childURIs
         );
-    }
-
-    function _verifyChildTokens(uint256[] memory _childTokenIds) internal view {
-        for (uint256 i = 0; i < _childTokenIds.length; i++) {
-            require(
-                _childFGO.tokenExists(_childTokenIds[i]),
-                "CoinOpChildFGO: Token does not exist."
-            );
-        }
     }
 
     function burn(uint256 _tokenId) public onlyEscrow {

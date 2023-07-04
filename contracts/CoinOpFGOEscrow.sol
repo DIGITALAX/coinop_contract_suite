@@ -3,12 +3,13 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./CoinOpChildFGO.sol";
 import "./CoinOpParentFGO.sol";
 import "./CoinOpAccessControl.sol";
 
-contract CoinOpFGOEscrow is ERC721Holder {
+contract CoinOpFGOEscrow is ERC721Holder, ERC1155Holder {
     CoinOpAccessControl private _accessControl;
     CoinOpParentFGO private _parentFGO;
     CoinOpChildFGO private _childFGO;
@@ -33,6 +34,8 @@ contract CoinOpFGOEscrow is ERC721Holder {
         address indexed newCoinOPParentFGO,
         address updater
     );
+    event ParentReleased(uint256 parentTokenId);
+    event ChildrenReleased(uint256[] childTokenIds);
 
     constructor(
         address _parentFGOContract,
@@ -65,20 +68,12 @@ contract CoinOpFGOEscrow is ERC721Holder {
         _;
     }
 
-    function depositParent(
-        uint256 _parentTokenId,
-        bool _bool
-    ) external onlyDepositer {
-        _parentDeposited[_parentTokenId] = _bool;
+    function depositParent(uint256 _parentTokenId) external onlyDepositer {
+        _parentDeposited[_parentTokenId] = true;
     }
 
-    function depositChildren(
-        uint256[] memory _childTokenIds,
-        bool _bool
-    ) external onlyDepositer {
-        for (uint256 i = 0; i < _childTokenIds.length; i++) {
-            _childDeposited[_childTokenIds[i]] = _bool;
-        }
+    function depositChild(uint256 _childTokenId) external onlyDepositer {
+        _childDeposited[_childTokenId] = true;
     }
 
     function releaseParent(uint256 _parentTokenId) external onlyAdmin {
@@ -95,6 +90,8 @@ contract CoinOpFGOEscrow is ERC721Holder {
             _childFGO.setParentId(_childTokens[i], 0);
         }
         _parentFGO.burn(_parentTokenId);
+
+        emit ParentReleased(_parentTokenId);
     }
 
     function releaseChildren(
@@ -134,6 +131,8 @@ contract CoinOpFGOEscrow is ERC721Holder {
 
             _parentFGO.setChildTokenIds(parentId, newChildTokens);
         }
+
+        emit ChildrenReleased(_childTokenIds);
     }
 
     function updateAccessControl(
@@ -158,5 +157,13 @@ contract CoinOpFGOEscrow is ERC721Holder {
 
     function getParentFGOAddress() public view returns (address) {
         return address(_parentFGO);
+    }
+
+    function getChildDeposited(uint256 _childId) public view returns (bool) {
+        return _childDeposited[_childId];
+    }
+
+    function getParentDeposited(uint256 _parentId) public view returns (bool) {
+        return _parentDeposited[_parentId];
     }
 }
