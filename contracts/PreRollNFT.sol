@@ -96,7 +96,7 @@ contract PreRollNFT is ERC721Enumerable {
         _;
     }
 
-    constructor(address _accessControlAddress) ERC721("PreRollNFT", "CHRON") {
+    constructor(address _accessControlAddress) ERC721("PreRollNFT", "PRNFT") {
         _accessControl = CoinOpAccessControl(_accessControlAddress);
         _totalSupplyCount = 0;
     }

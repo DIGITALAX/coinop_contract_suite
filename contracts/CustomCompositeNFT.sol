@@ -6,6 +6,7 @@ import "./CoinOpAccessControl.sol";
 import "./CoinOpMarket.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "hardhat/console.sol";
 
 contract CustomCompositeNFT is ERC721Enumerable {
     CoinOpAccessControl private _accessControl;
@@ -39,12 +40,6 @@ contract CustomCompositeNFT is ERC721Enumerable {
     );
 
     event TokenBurned(uint256 indexed tokenId);
-    event TokenFulfillerIdUpdated(
-        uint256 indexed tokenId,
-        uint256 oldFulfillerId,
-        uint256 newFulfillerId,
-        address updater
-    );
 
     modifier onlyAdmin() {
         require(
@@ -57,7 +52,7 @@ contract CustomCompositeNFT is ERC721Enumerable {
     modifier onlyMarket() {
         require(
             msg.sender == address(_coinOpMarket),
-            "CoinOpAccessControl: Only Market contract can perform this action"
+            "CustomCompositeNFT: Only Market contract can perform this action"
         );
         _;
     }
@@ -80,7 +75,7 @@ contract CustomCompositeNFT is ERC721Enumerable {
     ) public onlyMarket {
         uint256[] memory tokenIds = new uint256[](_amount);
         for (uint256 i = 0; i < _amount; i++) {
-            _totalSupplyCount += 1;
+            _totalSupplyCount++;
             _mintToken(
                 _acceptedToken,
                 _creatorAddress,
@@ -89,7 +84,6 @@ contract CustomCompositeNFT is ERC721Enumerable {
                 _productId,
                 _uri
             );
-
             tokenIds[i] = _totalSupplyCount;
             _safeMint(_creatorAddress, _totalSupplyCount);
         }
@@ -116,7 +110,6 @@ contract CustomCompositeNFT is ERC721Enumerable {
             timestamp: block.timestamp,
             fulfillerId: _fulfillerId
         });
-
         _tokens[_totalSupplyCount] = newToken;
     }
 
@@ -155,7 +148,7 @@ contract CustomCompositeNFT is ERC721Enumerable {
         );
     }
 
-    function updateMarket(address _newMarketAddress) public onlyAdmin {
+    function setCoinOpMarket(address _newMarketAddress) public onlyAdmin {
         address oldAddress = address(_coinOpMarket);
         _coinOpMarket = CoinOpMarket(_newMarketAddress);
         emit MarketUpdated(oldAddress, _newMarketAddress, msg.sender);

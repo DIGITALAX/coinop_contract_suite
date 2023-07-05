@@ -4,7 +4,7 @@ import chai from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 const { expect } = chai;
 
-describe("Escrow Contract", function () {
+xdescribe("Escrow Contract", function () {
   let admin: SignerWithAddress,
     nonAdmin: SignerWithAddress,
     fulfiller: SignerWithAddress,

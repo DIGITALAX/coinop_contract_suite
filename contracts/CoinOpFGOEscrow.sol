@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./CoinOpChildFGO.sol";
 import "./CoinOpParentFGO.sol";
 import "./CoinOpAccessControl.sol";
-import "hardhat/console.sol";
 
 contract CoinOpFGOEscrow is ERC721Holder, ERC1155Holder {
     CoinOpAccessControl private _accessControl;

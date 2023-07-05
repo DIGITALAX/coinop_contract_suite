@@ -231,6 +231,7 @@ contract CoinOpMarket {
                 exchangeRate,
                 params.chosenTokenAddress
             );
+
             _canPurchase(params.chosenTokenAddress, price);
             address creator = _childFGO.getChildCreator(params.customIds[i]);
             _transferTokens(
@@ -243,7 +244,7 @@ contract CoinOpMarket {
 
             _customCompositeNFT.mintBatch(
                 params.chosenTokenAddress,
-                creator,
+                msg.sender,
                 price,
                 params.customAmounts[i],
                 fulfillerId,
@@ -419,7 +420,11 @@ contract CoinOpMarket {
         uint256 _exchangeRate,
         address _tokenAddress
     ) internal view returns (uint256) {
-        uint256 tokenAmount = _amountInWei / _exchangeRate;
+        require(
+            _amountInWei > 0 && _exchangeRate > 0,
+            "CoinOpMarket: Invalid calculation amounts."
+        );
+        uint256 tokenAmount = (_amountInWei * (10 ** 18)) / _exchangeRate;
         if (_tokenAddress == _oracle.getTetherAddress()) {
             tokenAmount = tokenAmount / (10 ** 12);
         }

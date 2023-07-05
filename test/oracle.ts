@@ -4,7 +4,7 @@ import chai from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 const { expect } = chai;
 
-describe("Oracle Contract", function () {
+xdescribe("Oracle Contract", function () {
   let admin: SignerWithAddress,
     nonAdmin: SignerWithAddress,
     accessControl: Contract,

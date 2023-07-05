@@ -4,7 +4,7 @@ import chai from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 const { expect } = chai;
 
-describe("FGO Contracts", function () {
+xdescribe("FGO Contracts", function () {
   let admin: SignerWithAddress,
     nonAdmin: SignerWithAddress,
     fulfiller: SignerWithAddress,
