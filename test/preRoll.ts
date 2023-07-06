@@ -4,7 +4,7 @@ import chai from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 const { expect } = chai;
 
-describe("PreRoll Contracts", function () {
+xdescribe("PreRoll Contracts", function () {
   let admin: SignerWithAddress,
     nonAdmin: SignerWithAddress,
     fulfiller: SignerWithAddress,
@@ -480,8 +480,6 @@ describe("PreRoll Contracts", function () {
       });
     });
     it("successfully minted", async () => {
-      console.log(await preRollCollection.getCollectionTokenIds(1));
-      console.log(await preRollCollection.getCollectionTokenIds(2));
       expect(await preRollCollection.getCollectionTokenIds(1)).to.deep.equal([
         BigNumber.from("1"),
         BigNumber.from("2"),

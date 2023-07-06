@@ -5,7 +5,6 @@ import "./CoinOpAccessControl.sol";
 import "./CoinOpFulfillment.sol";
 import "./CoinOpPayment.sol";
 import "./PreRollNFT.sol";
-import "hardhat/console.sol";
 
 pragma solidity ^0.8.9;
 
@@ -349,7 +348,7 @@ contract PreRollCollection {
             collection.mintedTokens++;
         }
 
-        collection.tokenIds = newTokenIds;
+        collection.tokenIds = _concatenate(collection.tokenIds, newTokenIds);
 
         emit TokensMinted(
             collection.collectionId,
@@ -358,6 +357,23 @@ contract PreRollCollection {
             newTokenIds,
             collection.creator
         );
+    }
+
+    function _concatenate(
+        uint256[] memory _originalArray,
+        uint256[] memory _newArray
+    ) internal pure returns (uint256[] memory) {
+        uint256[] memory result = new uint256[](
+            _originalArray.length + _newArray.length
+        );
+        uint256 i;
+        for (i = 0; i < _originalArray.length; i++) {
+            result[i] = _originalArray[i];
+        }
+        for (uint256 j = 0; j < _newArray.length; j++) {
+            result[i++] = _newArray[j];
+        }
+        return result;
     }
 
     function deleteCollection(

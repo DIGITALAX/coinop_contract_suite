@@ -45,7 +45,7 @@ contract CoinOpMarket {
         uint256 timestamp;
         uint256 fulfillerId;
         uint256 price;
-        uint256 tokenType;
+        string tokenType;
         string status;
         string details;
         address buyer;
@@ -205,7 +205,10 @@ contract CoinOpMarket {
                 params.preRollAmounts[i],
                 params.chosenTokenAddress
             );
-            _canPurchase(params.chosenTokenAddress, price);
+            _canPurchase(
+                params.chosenTokenAddress,
+                price * params.preRollAmounts[i]
+            );
             address creator = _preRollCollection.getCollectionCreator(
                 params.preRollIds[i]
             );
@@ -213,10 +216,10 @@ contract CoinOpMarket {
                 params.chosenTokenAddress,
                 creator,
                 msg.sender,
-                price,
+                price * params.preRollAmounts[i],
                 fulfillerId
             );
-            _prices[i] = price;
+            _prices[i] = price * params.preRollAmounts[i];
             _preRollCollection.purchaseAndMintToken(
                 params.preRollIds[i],
                 params.preRollAmounts[i],
@@ -227,19 +230,20 @@ contract CoinOpMarket {
             uint256[] memory _tokenIds = _preRollCollection
                 .getCollectionTokenIds(params.preRollIds[i]);
 
-            _preRollTokensSold[params.preRollIds[i]] += 1;
-            _preRollTokenIdsSold[params.preRollIds[i]].push(
-                _tokenIds[_tokenIds.length - 1]
-            );
+            _preRollTokensSold[params.preRollIds[i]] += params.preRollAmounts[
+                i
+            ];
+
+            _preRollTokenIdsSold[params.preRollIds[i]] = _tokenIds;
 
             _createOrder(
                 params.chosenTokenAddress,
                 msg.sender,
-                price,
+                price * params.preRollAmounts[i],
                 fulfillerId,
-                0,
                 _tokenIds[_tokenIds.length - 1],
-                params.fulfillmentDetails
+                params.fulfillmentDetails,
+                "preroll"
             );
         }
 
@@ -250,20 +254,23 @@ contract CoinOpMarket {
                 params.chosenTokenAddress
             );
 
-            _canPurchase(params.chosenTokenAddress, price);
+            _canPurchase(
+                params.chosenTokenAddress,
+                price * params.customAmounts[i]
+            );
             address creator = _childFGO.getChildCreator(params.customIds[i]);
             _transferTokens(
                 params.chosenTokenAddress,
                 creator,
                 msg.sender,
-                price,
+                price * params.customAmounts[i],
                 fulfillerId
             );
 
             _customCompositeNFT.mint(
                 params.chosenTokenAddress,
                 msg.sender,
-                price,
+                price * params.customAmounts[i],
                 params.customAmounts[i],
                 fulfillerId,
                 params.customIds[i],
@@ -273,14 +280,14 @@ contract CoinOpMarket {
             _createOrder(
                 params.chosenTokenAddress,
                 msg.sender,
-                price,
+                price * params.customAmounts[i],
                 fulfillerId,
-                1,
                 params.customIds[i],
-                params.fulfillmentDetails
+                params.fulfillmentDetails,
+                "custom"
             );
 
-            _prices[i] = price;
+            _prices[i] = price * params.customAmounts[i];
         }
 
         emit TokensBought(
@@ -299,9 +306,9 @@ contract CoinOpMarket {
         address _buyer,
         uint256 _price,
         uint256 _fulfillerId,
-        uint256 _tokenType,
         uint256 _tokenId,
-        string memory _fulfillmentDetails
+        string memory _fulfillmentDetails,
+        string memory _tokenType
     ) internal {
         _orderSupply++;
 
@@ -580,7 +587,9 @@ contract CoinOpMarket {
         return _orders[_orderId].fulfillerId;
     }
 
-    function getOrderTokenType(uint256 _orderId) public view returns (uint256) {
+    function getOrderTokenType(
+        uint256 _orderId
+    ) public view returns (string memory) {
         return _orders[_orderId].tokenType;
     }
 

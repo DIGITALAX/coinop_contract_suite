@@ -280,6 +280,13 @@ xdescribe("Custom Composite Contract", function () {
     });
 
     it("emits token burned event", async () => {
+      await ethAddress.transfer(nonAdmin.address, "330000000000000000");
+      await ethAddress
+        .connect(nonAdmin)
+        .approve(
+          coinOpMarket.address,
+          BigNumber.from("6000000000000000000000000")
+        );
       await coinOpMarket.connect(nonAdmin).buyTokens({
         preRollIds: [],
         preRollAmounts: [],
@@ -299,6 +306,13 @@ xdescribe("Custom Composite Contract", function () {
     });
 
     it("mints again after burning", async () => {
+      await ethAddress.transfer(nonAdmin.address, "330000000000000000");
+      await ethAddress
+        .connect(nonAdmin)
+        .approve(
+          coinOpMarket.address,
+          BigNumber.from("6000000000000000000000000")
+        );
       expect(await customCompositeNFT.getTotalSupplyCount()).to.deep.equal(
         BigNumber.from("2")
       );

@@ -6,7 +6,6 @@ import "./CoinOpAccessControl.sol";
 import "./CoinOpMarket.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "hardhat/console.sol";
 
 contract CustomCompositeNFT is ERC721Enumerable {
     CoinOpAccessControl private _accessControl;
