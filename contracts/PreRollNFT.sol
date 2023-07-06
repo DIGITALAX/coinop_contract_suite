@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 
 import "./PreRollCollection.sol";
 import "./CoinOpAccessControl.sol";
+import "./CoinOpFulfillment.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
@@ -12,12 +13,13 @@ contract PreRollNFT is ERC721Enumerable {
 
     CoinOpAccessControl private _accessControl;
     PreRollCollection private _preRollCollection;
+    CoinOpFulfillment private _coinOpFulfillment;
     uint256 private _totalSupplyCount;
 
     struct Token {
         uint256 tokenId;
         uint256 collectionId;
-        uint256 basePrice;
+        uint256 price;
         address acceptedToken;
         address creator;
         string uri;
@@ -42,41 +44,17 @@ contract PreRollNFT is ERC721Enumerable {
         address indexed newPreRollCollection,
         address updater
     );
+    event FulfillmentUpdated(
+        address indexed oldFulfillment,
+        address indexed newFulfillment,
+        address updater
+    );
 
     event TokenBurned(uint256 indexed tokenId);
-    event TokenBasePriceUpdated(
-        uint256 indexed tokenId,
-        uint256 oldPrice,
-        uint256 newPrice,
-        address updater
-    );
-    event TokenURIUpdated(
-        uint256 indexed tokenId,
-        string oldURI,
-        string newURI,
-        address updater
-    );
     event TokenFulfillerIdUpdated(
         uint256 indexed tokenId,
         uint256 oldFulfillerId,
         uint256 newFulfillerId,
-        address updater
-    );
-    event TokenPrintTypeUpdated(
-        uint256 indexed tokenId,
-        string oldPrintType,
-        string newPrintType,
-        address updater
-    );
-    event TokenSizesUpdated(
-        uint256 indexed tokenId,
-        string[] oldSizes,
-        string[] newSizes,
-        address updater
-    );
-    event TokenDiscountUpdated(
-        uint256 indexed tokenId,
-        uint256 discount,
         address updater
     );
 
@@ -84,6 +62,14 @@ contract PreRollNFT is ERC721Enumerable {
         require(
             _accessControl.isAdmin(msg.sender),
             "CoinOpAccessControl: Only admin can perform this action"
+        );
+        _;
+    }
+
+    modifier onlyCreator(uint256 _tokenId) {
+        require(
+            msg.sender == _tokens[_tokenId].creator,
+            "PreRollNFT: Only the creator can edit the fulfiller ID"
         );
         _;
     }
@@ -96,8 +82,12 @@ contract PreRollNFT is ERC721Enumerable {
         _;
     }
 
-    constructor(address _accessControlAddress) ERC721("PreRollNFT", "PRNFT") {
+    constructor(
+        address _accessControlAddress,
+        address _fulfillmentAddress
+    ) ERC721("PreRollNFT", "PRNFT") {
         _accessControl = CoinOpAccessControl(_accessControlAddress);
+        _coinOpFulfillment = CoinOpFulfillment(_fulfillmentAddress);
         _totalSupplyCount = 0;
     }
 
@@ -142,7 +132,7 @@ contract PreRollNFT is ERC721Enumerable {
         Token memory newToken = Token({
             tokenId: _totalSupplyCount,
             collectionId: _collectionId,
-            basePrice: params.basePrice,
+            price: params.price,
             acceptedToken: _acceptedToken,
             creator: _creatorAddress,
             uri: params.uri,
@@ -200,6 +190,14 @@ contract PreRollNFT is ERC721Enumerable {
         );
     }
 
+    function updateFulfillment(
+        address _newFulfillmentAddress
+    ) public onlyAdmin {
+        address oldAddress = address(_coinOpFulfillment);
+        _coinOpFulfillment = CoinOpFulfillment(_newFulfillmentAddress);
+        emit FulfillmentUpdated(oldAddress, _newFulfillmentAddress, msg.sender);
+    }
+
     function tokenURI(
         uint256 _tokenId
     ) public view virtual override returns (string memory) {
@@ -214,8 +212,8 @@ contract PreRollNFT is ERC721Enumerable {
         return _tokens[_tokenId].creator;
     }
 
-    function getTokenBasePrice(uint256 _tokenId) public view returns (uint256) {
-        return _tokens[_tokenId].basePrice;
+    function getTokenPrice(uint256 _tokenId) public view returns (uint256) {
+        return _tokens[_tokenId].price;
     }
 
     function getTokenCollection(
@@ -264,19 +262,15 @@ contract PreRollNFT is ERC721Enumerable {
         return _fulfillerId[_tokenId];
     }
 
-    function setBasePrice(
-        uint256 _tokenId,
-        uint256 _newPrice
-    ) public onlyCollectionContract {
-        uint256 oldPrice = _tokens[_tokenId].basePrice;
-        _tokens[_tokenId].basePrice = _newPrice;
-        emit TokenBasePriceUpdated(_tokenId, oldPrice, _newPrice, msg.sender);
-    }
-
     function setFulfillerId(
         uint256 _tokenId,
         uint256 _newFulfillerId
-    ) public onlyCollectionContract {
+    ) public onlyCreator(_tokenId) {
+        require(
+            _coinOpFulfillment.getFulfillerAddress(_newFulfillerId) !=
+                address(0),
+            "CoinOpFulfillment: FulfillerId does not exist."
+        );
         uint256 oldFulfillerId = _fulfillerId[_tokenId];
         _fulfillerId[_tokenId] = _newFulfillerId;
         emit TokenFulfillerIdUpdated(
@@ -287,52 +281,12 @@ contract PreRollNFT is ERC721Enumerable {
         );
     }
 
-    function setSizes(
-        uint256 _tokenId,
-        string[] memory _newSizes
-    ) public onlyCollectionContract {
-        string[] memory oldSizes = _sizes[_tokenId];
-        _sizes[_tokenId] = _newSizes;
-        emit TokenSizesUpdated(_tokenId, oldSizes, _newSizes, msg.sender);
-    }
-
-    function setPrintType(
-        uint256 _tokenId,
-        string memory _newPrintType
-    ) public onlyCollectionContract {
-        string memory oldPrintType = _printType[_tokenId];
-        _printType[_tokenId] = _newPrintType;
-        emit TokenPrintTypeUpdated(
-            _tokenId,
-            oldPrintType,
-            _newPrintType,
-            msg.sender
-        );
-    }
-
-    function setTokenURI(
-        uint256 _tokenId,
-        string memory _newURI
-    ) public onlyCollectionContract {
-        string memory oldURI = _tokens[_tokenId].uri;
-        _tokens[_tokenId].uri = _newURI;
-        emit TokenURIUpdated(_tokenId, oldURI, _newURI, msg.sender);
-    }
-
-    function setDiscount(
-        uint256 _tokenId,
-        uint256 _newDiscount
-    ) public onlyCollectionContract {
-        require(
-            _newDiscount < 100,
-            "CoinOpMarket: Discount cannot exceed 100."
-        );
-        _discount[_tokenId] = _newDiscount;
-        emit TokenDiscountUpdated(_tokenId, _newDiscount, msg.sender);
-    }
-
     function getAccessControlContract() public view returns (address) {
         return address(_accessControl);
+    }
+
+    function getFulfillmentContract() public view returns (address) {
+        return address(_coinOpFulfillment);
     }
 
     function getPreRollCollectionContract() public view returns (address) {

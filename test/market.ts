@@ -99,7 +99,10 @@ xdescribe("PreRoll Contracts", function () {
       "CoinOpOracle"
     );
 
-    preRollNFT = await PreRollNFT.deploy(accessControl.address);
+    preRollNFT = await PreRollNFT.deploy(
+      accessControl.address,
+      coinOpFulfillment.address
+    );
 
     preRollCollection = await PreRollCollection.deploy(
       preRollNFT.address,
@@ -118,6 +121,7 @@ xdescribe("PreRoll Contracts", function () {
       parentFGO.address,
       coinOpOracle.address,
       coinOpPayment.address,
+      preRollNFT.address,
       "COMA",
       "CoinOpMarket"
     );
@@ -138,4 +142,5 @@ xdescribe("PreRoll Contracts", function () {
     await coinOpFulfillment.createFulfiller(10, fulfiller.address);
   });
 
+  describe("", () => {})
 });

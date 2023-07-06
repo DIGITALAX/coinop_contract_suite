@@ -64,7 +64,7 @@ contract CustomCompositeNFT is ERC721Enumerable {
         _totalSupplyCount = 0;
     }
 
-    function mintBatch(
+    function mint(
         address _acceptedToken,
         address _creatorAddress,
         uint256 _price,

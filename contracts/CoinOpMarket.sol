@@ -5,11 +5,13 @@ pragma solidity ^0.8.9;
 import "./CoinOpAccessControl.sol";
 import "./CoinOpFulfillment.sol";
 import "./PreRollCollection.sol";
+import "./PreRollNFT.sol";
 import "./CustomCompositeNFT.sol";
 import "./CoinOpChildFGO.sol";
 import "./CoinOpParentFGO.sol";
 import "./CoinOpOracle.sol";
 import "./CoinOpPayment.sol";
+import "hardhat/console.sol";
 
 library MarketParamsLibrary {
     struct MarketParams {
@@ -25,6 +27,7 @@ library MarketParamsLibrary {
 
 contract CoinOpMarket {
     PreRollCollection private _preRollCollection;
+    PreRollNFT private _preRollNFT;
     CoinOpPayment private _coinOpPayment;
     CoinOpOracle private _oracle;
     CoinOpAccessControl private _accessControl;
@@ -83,6 +86,11 @@ contract CoinOpMarket {
     event PreRollCollectionUpdated(
         address indexed oldPreRollCollection,
         address indexed newPreRollCollection,
+        address updater
+    );
+    event PreRollNFTUpdated(
+        address indexed oldPreRollNFT,
+        address indexed newPreRollNFT,
         address updater
     );
     event CompositeNFTUpdated(
@@ -149,6 +157,7 @@ contract CoinOpMarket {
         address _parentFGOContract,
         address _oracleContract,
         address _coinOpPaymentContract,
+        address _preRollNFTContract,
         string memory _symbol,
         string memory _name
     ) {
@@ -160,6 +169,7 @@ contract CoinOpMarket {
         _customCompositeNFT = CustomCompositeNFT(_customCompositeContract);
         _childFGO = CoinOpChildFGO(_childFGOContract);
         _parentFGO = CoinOpParentFGO(_parentFGOContract);
+        _preRollNFT = PreRollNFT(_preRollNFTContract);
         symbol = _symbol;
         name = _name;
         _orderSupply = 0;
@@ -175,6 +185,8 @@ contract CoinOpMarket {
         );
         require(
             params.customIds.length == params.customAmounts.length &&
+                params.customIds.length == params.customURIs.length &&
+                params.customAmounts.length == params.customURIs.length &&
                 params.preRollIds.length == params.preRollAmounts.length,
             "CoinOpMarket: Each token must have an amount."
         );
@@ -205,6 +217,12 @@ contract CoinOpMarket {
                 fulfillerId
             );
             _prices[i] = price;
+            _preRollCollection.purchaseAndMintToken(
+                params.preRollIds[i],
+                params.preRollAmounts[i],
+                msg.sender,
+                params.chosenTokenAddress
+            );
 
             uint256[] memory _tokenIds = _preRollCollection
                 .getCollectionTokenIds(params.preRollIds[i]);
@@ -242,7 +260,7 @@ contract CoinOpMarket {
                 fulfillerId
             );
 
-            _customCompositeNFT.mintBatch(
+            _customCompositeNFT.mint(
                 params.chosenTokenAddress,
                 msg.sender,
                 price,
@@ -264,13 +282,6 @@ contract CoinOpMarket {
 
             _prices[i] = price;
         }
-
-        _preRollCollection.purchaseAndMintToken(
-            params.preRollIds,
-            params.preRollAmounts,
-            msg.sender,
-            params.chosenTokenAddress
-        );
 
         emit TokensBought(
             params.preRollIds,
@@ -355,7 +366,7 @@ contract CoinOpMarket {
             "CoinOpMarket: No more tokens can be bought from this collection."
         );
 
-        uint256 basePrice = _preRollCollection.getCollectionBasePrice(
+        uint256 basePrice = _preRollCollection.getCollectionPrice(
             _collectionId
         );
 
@@ -453,6 +464,14 @@ contract CoinOpMarket {
             _newPreRollCollectionAddress,
             msg.sender
         );
+    }
+
+    function updatePreRollNFT(
+        address _newPreRollNFTAddress
+    ) external onlyAdmin {
+        address oldAddress = address(_preRollNFT);
+        _preRollNFT = PreRollNFT(_newPreRollNFTAddress);
+        emit PreRollNFTUpdated(oldAddress, _newPreRollNFTAddress, msg.sender);
     }
 
     function updateCoinOpFulfillment(
@@ -602,6 +621,10 @@ contract CoinOpMarket {
 
     function getPreRollCollectionContract() public view returns (address) {
         return address(_preRollCollection);
+    }
+
+    function getPreRollNFTContract() public view returns (address) {
+        return address(_preRollNFT);
     }
 
     function getCoinOpFulfillmentContract() public view returns (address) {

@@ -5,12 +5,13 @@ import "./CoinOpAccessControl.sol";
 import "./CoinOpFulfillment.sol";
 import "./CoinOpPayment.sol";
 import "./PreRollNFT.sol";
+import "hardhat/console.sol";
 
 pragma solidity ^0.8.9;
 
 library MintParamsLibrary {
     struct MintParams {
-        uint256 basePrice;
+        uint256 price;
         uint256 fulfillerId;
         uint256 discount;
         string[] sizes;
@@ -32,7 +33,7 @@ contract PreRollCollection {
     string public name;
 
     struct Collection {
-        uint256 basePrice;
+        uint256 price;
         uint256[] tokenIds;
         uint256 collectionId;
         uint256 amount;
@@ -41,6 +42,7 @@ contract PreRollCollection {
         address creator;
         string uri;
         bool isDeleted;
+        bool noLimit;
     }
 
     mapping(uint256 => Collection) private _collections;
@@ -79,7 +81,7 @@ contract PreRollCollection {
         address updater
     );
 
-    event CollectionBasePriceUpdated(
+    event CollectionPriceUpdated(
         uint256 indexed collectionId,
         uint256 oldPrice,
         uint256 newPrice,
@@ -205,7 +207,7 @@ contract PreRollCollection {
             _amount = type(uint256).max;
         }
 
-        _createNewCollection(params, _amount, _creator);
+        _createNewCollection(params, _amount, _creator, _noLimit);
 
         _setMappings(params);
 
@@ -223,13 +225,17 @@ contract PreRollCollection {
     ) external {
         address _creator = msg.sender;
         require(
-            _collections[_collectionId].amount == type(uint256).max,
+            _collections[_collectionId].amount != type(uint256).max,
             "PreRollCollection: Collection cannot be added to."
         );
 
         require(
             !_collections[_collectionId].isDeleted,
             "PreRollCollection: This collection has been deleted"
+        );
+        require(
+            _collections[_collectionId].collectionId != 0,
+            "PreRollCollection: Collection does not exist"
         );
 
         require(
@@ -257,17 +263,19 @@ contract PreRollCollection {
     function _createNewCollection(
         MintParamsLibrary.MintParams memory params,
         uint256 _amount,
-        address _creatorAddress
+        address _creatorAddress,
+        bool _noLimit
     ) private {
         Collection memory newCollection = Collection({
             collectionId: _collectionSupply,
-            basePrice: params.basePrice,
+            price: params.price,
             tokenIds: new uint256[](0),
             amount: _amount,
             mintedTokens: 0,
             creator: _creatorAddress,
             uri: params.uri,
             isDeleted: false,
+            noLimit: _noLimit,
             timestamp: block.timestamp
         });
 
@@ -283,7 +291,7 @@ contract PreRollCollection {
     ) private {
         MintParamsLibrary.MintParams memory paramsNFT = MintParamsLibrary
             .MintParams({
-                basePrice: _collection.basePrice,
+                price: _collection.price,
                 uri: _collection.uri,
                 printType: _printType[_collection.collectionId],
                 fulfillerId: _fulfillerId[_collection.collectionId],
@@ -302,8 +310,8 @@ contract PreRollCollection {
     }
 
     function purchaseAndMintToken(
-        uint256[] memory _collectionIds,
-        uint256[] memory _amounts,
+        uint256 _collectionId,
+        uint256 _amount,
         address _purchaserAddress,
         address _acceptedToken
     ) external onlyMarket {
@@ -311,54 +319,45 @@ contract PreRollCollection {
             _coinOpPayment.checkIfAddressVerified(_acceptedToken),
             "CoinOpPayment: Not a valid accepted purchase token."
         );
+
+        Collection storage collection = _collections[_collectionId];
+
         require(
-            _collectionIds.length == _amounts.length,
-            "PreRollCollection: Input arrays must be of equal length"
+            !collection.isDeleted,
+            "PreRollCollection: This collection has been deleted."
+        );
+        require(
+            collection.amount == type(uint256).max ||
+                collection.mintedTokens + _amount <= collection.amount,
+            "PreRollCollection: Cannot mint more than collection amount"
         );
 
-        for (uint256 c = 0; c < _collectionIds.length; c++) {
-            Collection storage collection = _collections[_collectionIds[c]];
+        uint256 initialSupply = _preRollNFT.getTotalSupplyCount();
 
-            require(
-                !collection.isDeleted,
-                "PreRollCollection: This collection has been deleted."
-            );
+        _mintNFT(
+            _collections[_collectionId],
+            _amount,
+            collection.creator,
+            _purchaserAddress,
+            _acceptedToken
+        );
 
-            require(
-                collection.amount == type(uint256).max ||
-                    collection.mintedTokens + _amounts[c] <= collection.amount,
-                "PreRollCollection: Cannot mint more than collection amount"
-            );
-
-            uint256 initialSupply = _preRollNFT.getTotalSupplyCount();
-
-            for (uint256 i = 0; i < _amounts[c]; i++) {
-                _mintNFT(
-                    _collections[_collectionIds[c]],
-                    _amounts[c],
-                    collection.creator,
-                    _purchaserAddress,
-                    _acceptedToken
-                );
-            }
-
-            uint256 finalSupply = _preRollNFT.getTotalSupplyCount();
-            uint256[] memory emissionArray = new uint256[](_amounts[c]);
-
-            for (uint256 i = initialSupply + 1; i <= finalSupply; i++) {
-                collection.tokenIds.push(i);
-                emissionArray[i - (initialSupply + 1)] = i;
-                collection.mintedTokens++;
-            }
-
-            emit TokensMinted(
-                collection.collectionId,
-                collection.uri,
-                _amounts[c],
-                emissionArray,
-                collection.creator
-            );
+        uint256[] memory newTokenIds = new uint256[](_amount);
+        for (uint256 i = 0; i < _amount; i++) {
+            uint256 tokenId = initialSupply + i + 1;
+            newTokenIds[i] = tokenId;
+            collection.mintedTokens++;
         }
+
+        collection.tokenIds = newTokenIds;
+
+        emit TokensMinted(
+            collection.collectionId,
+            collection.uri,
+            _amount,
+            newTokenIds,
+            collection.creator
+        );
     }
 
     function deleteCollection(
@@ -455,10 +454,16 @@ contract PreRollCollection {
         return _collections[_collectionId].amount;
     }
 
-    function getCollectionBasePrice(
+    function getCollectionNoLimit(
+        uint256 _collectionId
+    ) public view returns (bool) {
+        return _collections[_collectionId].noLimit;
+    }
+
+    function getCollectionPrice(
         uint256 _collectionId
     ) public view returns (uint256) {
-        return _collections[_collectionId].basePrice;
+        return _collections[_collectionId].price;
     }
 
     function getCollectionIsDeleted(
@@ -596,7 +601,7 @@ contract PreRollCollection {
         emit CollectionDiscountUpdated(_collectionId, _newDiscount, msg.sender);
     }
 
-    function setCollection(
+    function setCollectionPrice(
         uint256 _collectionId,
         uint256 _newPrice
     ) external onlyCreator(_collectionId) {
@@ -604,9 +609,9 @@ contract PreRollCollection {
             !_collections[_collectionId].isDeleted,
             "PreRollCollection: This collection has been deleted."
         );
-        uint256 oldPrice = _collections[_collectionId].basePrice;
-        _collections[_collectionId].basePrice = _newPrice;
-        emit CollectionBasePriceUpdated(
+        uint256 oldPrice = _collections[_collectionId].price;
+        _collections[_collectionId].price = _newPrice;
+        emit CollectionPriceUpdated(
             _collectionId,
             oldPrice,
             _newPrice,
