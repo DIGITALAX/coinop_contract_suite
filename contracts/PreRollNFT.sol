@@ -19,10 +19,12 @@ contract PreRollNFT is ERC721Enumerable {
     struct Token {
         uint256 tokenId;
         uint256 collectionId;
-        uint256 price;
+        uint256 index;
+        uint256[] price;
         address acceptedToken;
         address creator;
         string uri;
+        string name;
         bool isBurned;
         uint256 timestamp;
     }
@@ -30,7 +32,6 @@ contract PreRollNFT is ERC721Enumerable {
     mapping(uint256 => Token) private _tokens;
     mapping(uint256 => uint256) private _fulfillerId;
     mapping(uint256 => string) private _printType;
-    mapping(uint256 => string[]) private _sizes;
     mapping(uint256 => uint256) private _discount;
 
     event BatchTokenMinted(address indexed to, uint256[] tokenIds, string uri);
@@ -120,7 +121,6 @@ contract PreRollNFT is ERC721Enumerable {
         _fulfillerId[_totalSupplyCount] = params.fulfillerId;
         _printType[_totalSupplyCount] = params.printType;
         _discount[_totalSupplyCount] = params.discount;
-        _sizes[_totalSupplyCount] = params.sizes;
     }
 
     function _mintToken(
@@ -136,6 +136,8 @@ contract PreRollNFT is ERC721Enumerable {
             acceptedToken: _acceptedToken,
             creator: _creatorAddress,
             uri: params.uri,
+            name: params.name,
+            index: params.index,
             isBurned: false,
             timestamp: block.timestamp
         });
@@ -212,7 +214,9 @@ contract PreRollNFT is ERC721Enumerable {
         return _tokens[_tokenId].creator;
     }
 
-    function getTokenPrice(uint256 _tokenId) public view returns (uint256) {
+    function getTokenPrice(
+        uint256 _tokenId
+    ) public view returns (uint256[] memory) {
         return _tokens[_tokenId].price;
     }
 
@@ -244,16 +248,20 @@ contract PreRollNFT is ERC721Enumerable {
         return _printType[_tokenId];
     }
 
+    function getTokenIndex(uint256 _tokenId) public view returns (uint256) {
+        return _tokens[_tokenId].index;
+    }
+
     function getTokenAcceptedToken(
         uint256 _tokenId
     ) public view returns (address) {
         return _tokens[_tokenId].acceptedToken;
     }
 
-    function getTokenSizes(
+    function getTokenName(
         uint256 _tokenId
-    ) public view returns (string[] memory) {
-        return _sizes[_tokenId];
+    ) public view returns (string memory) {
+        return _tokens[_tokenId].name;
     }
 
     function getTokenFulfillerId(

@@ -10,10 +10,11 @@ pragma solidity ^0.8.9;
 
 library MintParamsLibrary {
     struct MintParams {
-        uint256 price;
+        uint256[] price;
         uint256 fulfillerId;
         uint256 discount;
-        string[] sizes;
+        uint256 index;
+        string name;
         string uri;
         string printType;
     }
@@ -32,14 +33,16 @@ contract PreRollCollection {
     string public name;
 
     struct Collection {
-        uint256 price;
+        uint256[] price;
         uint256[] tokenIds;
         uint256 collectionId;
         uint256 amount;
         uint256 timestamp;
         uint256 mintedTokens;
+        uint256 index;
         address creator;
         string uri;
+        string name;
         bool isDeleted;
         bool noLimit;
     }
@@ -47,7 +50,6 @@ contract PreRollCollection {
     mapping(uint256 => Collection) private _collections;
     mapping(uint256 => uint256) private _fulfillerId;
     mapping(uint256 => string) private _printType;
-    mapping(uint256 => string[]) private _sizes;
     mapping(uint256 => uint256) private _discount;
 
     event TokensMinted(
@@ -82,8 +84,8 @@ contract PreRollCollection {
 
     event CollectionPriceUpdated(
         uint256 indexed collectionId,
-        uint256 oldPrice,
-        uint256 newPrice,
+        uint256[] oldPrice,
+        uint256[] newPrice,
         address updater
     );
 
@@ -131,10 +133,10 @@ contract PreRollCollection {
         address updater
     );
 
-    event CollectionSizesUpdated(
+    event CollectionNameUpdated(
         uint256 indexed collectionId,
-        string[] oldSizes,
-        string[] newSizes,
+        string oldName,
+        string newName,
         address updater
     );
 
@@ -189,6 +191,10 @@ contract PreRollCollection {
         bool _noLimit
     ) external {
         address _creator = msg.sender;
+        require(
+            params.index < params.price.length,
+            "PreRollCollection: The collection index cannot exceed the price array length."
+        );
         require(
             _accessControl.isAdmin(_creator) ||
                 _accessControl.isWriter(_creator),
@@ -254,7 +260,6 @@ contract PreRollCollection {
 
     function _setMappings(MintParamsLibrary.MintParams memory params) private {
         _printType[_collectionSupply] = params.printType;
-        _sizes[_collectionSupply] = params.sizes;
         _fulfillerId[_collectionSupply] = params.fulfillerId;
         _discount[_collectionSupply] = params.discount;
     }
@@ -268,11 +273,13 @@ contract PreRollCollection {
         Collection memory newCollection = Collection({
             collectionId: _collectionSupply,
             price: params.price,
+            index: params.index,
             tokenIds: new uint256[](0),
             amount: _amount,
             mintedTokens: 0,
             creator: _creatorAddress,
             uri: params.uri,
+            name: params.name,
             isDeleted: false,
             noLimit: _noLimit,
             timestamp: block.timestamp
@@ -295,7 +302,8 @@ contract PreRollCollection {
                 printType: _printType[_collection.collectionId],
                 fulfillerId: _fulfillerId[_collection.collectionId],
                 discount: _discount[_collection.collectionId],
-                sizes: _sizes[_collection.collectionId]
+                name: _collection.name,
+                index: _collection.index
             });
 
         _preRollNFT.mintBatch(
@@ -478,7 +486,7 @@ contract PreRollCollection {
 
     function getCollectionPrice(
         uint256 _collectionId
-    ) public view returns (uint256) {
+    ) public view returns (uint256[] memory) {
         return _collections[_collectionId].price;
     }
 
@@ -506,10 +514,16 @@ contract PreRollCollection {
         return _printType[_collectionId];
     }
 
-    function getCollectionSizes(
+    function getCollectionIndex(
         uint256 _collectionId
-    ) public view returns (string[] memory) {
-        return _sizes[_collectionId];
+    ) public view returns (uint256) {
+        return _collections[_collectionId].index;
+    }
+
+    function getCollectionName(
+        uint256 _collectionId
+    ) public view returns (string memory) {
+        return _collections[_collectionId].name;
     }
 
     function getCollectionTokenIds(
@@ -549,8 +563,8 @@ contract PreRollCollection {
         );
     }
 
-    function setCollectionSizes(
-        string[] memory _newSizes,
+    function setCollectionName(
+        string memory _newName,
         uint256 _collectionId
     ) external onlyCreator(_collectionId) {
         require(
@@ -558,12 +572,12 @@ contract PreRollCollection {
             "PreRollCollection: This collection has been deleted."
         );
 
-        string[] memory oldSizes = _sizes[_collectionId];
-        _sizes[_collectionId] = _newSizes;
-        emit CollectionSizesUpdated(
+        string memory oldName = _collections[_collectionId].name;
+        _collections[_collectionId].name = _newName;
+        emit CollectionNameUpdated(
             _collectionId,
-            oldSizes,
-            _newSizes,
+            oldName,
+            _newName,
             msg.sender
         );
     }
@@ -619,13 +633,13 @@ contract PreRollCollection {
 
     function setCollectionPrice(
         uint256 _collectionId,
-        uint256 _newPrice
+        uint256[] memory _newPrice
     ) external onlyCreator(_collectionId) {
         require(
             !_collections[_collectionId].isDeleted,
             "PreRollCollection: This collection has been deleted."
         );
-        uint256 oldPrice = _collections[_collectionId].price;
+        uint256[] memory oldPrice = _collections[_collectionId].price;
         _collections[_collectionId].price = _newPrice;
         emit CollectionPriceUpdated(
             _collectionId,

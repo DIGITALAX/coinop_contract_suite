@@ -17,7 +17,8 @@ contract CoinOpChildFGO is ERC1155 {
 
     struct ChildTemplate {
         uint256 _tokenId;
-        string _tokenURI;
+        string[] _tokenURIs;
+        string _posterURI;
         uint256 _amount;
         uint256 _parentId;
         uint256 _fulfillerId;
@@ -27,7 +28,11 @@ contract CoinOpChildFGO is ERC1155 {
 
     mapping(uint256 => ChildTemplate) private _tokenIdToTemplate;
 
-    event ChildTemplateCreated(uint256 indexed tokenId, string tokenURI);
+    event ChildTemplateCreated(
+        uint256 indexed tokenId,
+        string[] tokenURI,
+        string posterURI
+    );
     event ParentIdAdded(uint256 indexed tokenId, uint256 parentId);
     event ChildBurned(uint256 childTokenId);
 
@@ -71,13 +76,15 @@ contract CoinOpChildFGO is ERC1155 {
         uint256 _fulfillerId,
         uint256 _price,
         uint256 _parentId,
-        string memory _tokenURI,
+        string[] memory _tokenURIs,
+        string memory _posterURI,
         address _creator
     ) public onlyParent {
         ++_tokenIdPointer;
         _tokenIdToTemplate[_tokenIdPointer] = ChildTemplate({
             _tokenId: _tokenIdPointer,
-            _tokenURI: _tokenURI,
+            _tokenURIs: _tokenURIs,
+            _posterURI: _posterURI,
             _amount: _amount,
             _parentId: _parentId,
             _fulfillerId: _fulfillerId,
@@ -87,7 +94,7 @@ contract CoinOpChildFGO is ERC1155 {
 
         _mint(address(_fgoEscrow), _tokenIdPointer, _amount, "");
         _fgoEscrow.depositChild(_tokenIdPointer);
-        emit ChildTemplateCreated(_tokenIdPointer, _tokenURI);
+        emit ChildTemplateCreated(_tokenIdPointer, _tokenURIs, _posterURI);
     }
 
     function burn(uint256 _id, uint256 _amount) public onlyEscrow {
@@ -98,8 +105,8 @@ contract CoinOpChildFGO is ERC1155 {
         emit ChildBurned(_id);
     }
 
-    function uri(uint256 _id) public view override returns (string memory) {
-        return _tokenIdToTemplate[_id]._tokenURI;
+    function tokenURI(uint256 _id) public view returns (string[] memory) {
+        return _tokenIdToTemplate[_id]._tokenURIs;
     }
 
     function tokenExists(
@@ -145,10 +152,16 @@ contract CoinOpChildFGO is ERC1155 {
         return address(_accessControl);
     }
 
-    function getChildTokenURI(
+    function getChildTokenURIs(
+        uint256 _tokenId
+    ) public view returns (string[] memory) {
+        return _tokenIdToTemplate[_tokenId]._tokenURIs;
+    }
+
+    function getChildPosterURI(
         uint256 _tokenId
     ) public view returns (string memory) {
-        return _tokenIdToTemplate[_tokenId]._tokenURI;
+        return _tokenIdToTemplate[_tokenId]._posterURI;
     }
 
     function getChildTokenAmount(

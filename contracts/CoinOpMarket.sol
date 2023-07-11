@@ -373,9 +373,13 @@ contract CoinOpMarket {
             "CoinOpMarket: No more tokens can be bought from this collection."
         );
 
-        uint256 basePrice = _preRollCollection.getCollectionPrice(
+        uint256 collectionIndex = _preRollCollection.getCollectionIndex(
             _collectionId
         );
+
+        uint256 basePrice = _preRollCollection.getCollectionPrice(
+            _collectionId
+        )[collectionIndex];
 
         uint256 preRollPrice = _calculateAmount(
             basePrice,

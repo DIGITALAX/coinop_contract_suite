@@ -31,7 +31,7 @@ contract CoinOpParentFGO is ERC721 {
         uint256 indexed parentTokenId,
         string parentURI,
         uint256[] childTokenIds,
-        string[] childTokenURIs
+        string[][] childTokenURIs
     );
 
     event ParentBurned(uint256 parentTokenId);
@@ -66,7 +66,8 @@ contract CoinOpParentFGO is ERC721 {
     function mintFGO(
         string memory _parentURI,
         string memory _printType,
-        string[] memory _childURIs,
+        string[][] memory _childURIs,
+        string memory _childPosterURI,
         uint256 _price,
         uint256[] memory _childPrices,
         uint256 _fulfillerId
@@ -106,6 +107,7 @@ contract CoinOpParentFGO is ERC721 {
                 _childPrices[i],
                 _totalSupply,
                 _childURIs[i],
+                _childPosterURI,
                 msg.sender
             );
         }
