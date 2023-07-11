@@ -19,6 +19,7 @@ library MarketParamsLibrary {
         uint256[] preRollAmounts;
         uint256[] customIds;
         uint256[] customAmounts;
+        uint256[] indexes;
         string[] customURIs;
         string fulfillmentDetails;
         address chosenTokenAddress;
@@ -203,6 +204,7 @@ contract CoinOpMarket {
                 params.preRollIds[i],
                 exchangeRate,
                 params.preRollAmounts[i],
+                params.indexes[i],
                 params.chosenTokenAddress
             );
             _canPurchase(
@@ -223,6 +225,7 @@ contract CoinOpMarket {
             _preRollCollection.purchaseAndMintToken(
                 params.preRollIds[i],
                 params.preRollAmounts[i],
+                params.indexes[i],
                 msg.sender,
                 params.chosenTokenAddress
             );
@@ -364,6 +367,7 @@ contract CoinOpMarket {
         uint256 _collectionId,
         uint256 _exchangeRate,
         uint256 _amount,
+        uint256 _chosenIndex,
         address _chosenTokenAddress
     ) internal view returns (uint256, uint256) {
         require(
@@ -379,7 +383,7 @@ contract CoinOpMarket {
 
         uint256 basePrice = _preRollCollection.getCollectionPrice(
             _collectionId
-        )[collectionIndex];
+        )[_chosenIndex];
 
         uint256 preRollPrice = _calculateAmount(
             basePrice,

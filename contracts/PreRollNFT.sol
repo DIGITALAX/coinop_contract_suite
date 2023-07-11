@@ -96,6 +96,7 @@ contract PreRollNFT is ERC721Enumerable {
         MintParamsLibrary.MintParams memory params,
         uint256 _amount,
         uint256 _collectionId,
+        uint256 _chosenIndex,
         address _creatorAddress,
         address _purchaserAddress,
         address _acceptedToken
@@ -107,7 +108,13 @@ contract PreRollNFT is ERC721Enumerable {
         uint256[] memory tokenIds = new uint256[](_amount);
         for (uint256 i = 0; i < _amount; i++) {
             _totalSupplyCount += 1;
-            _mintToken(params, _collectionId, _creatorAddress, _acceptedToken);
+            _mintToken(
+                params,
+                _collectionId,
+                _chosenIndex,
+                _creatorAddress,
+                _acceptedToken
+            );
             _setMappings(params);
 
             tokenIds[i] = _totalSupplyCount;
@@ -126,6 +133,7 @@ contract PreRollNFT is ERC721Enumerable {
     function _mintToken(
         MintParamsLibrary.MintParams memory params,
         uint256 _collectionId,
+        uint256 _chosenIndex,
         address _creatorAddress,
         address _acceptedToken
     ) private {
@@ -137,7 +145,7 @@ contract PreRollNFT is ERC721Enumerable {
             creator: _creatorAddress,
             uri: params.uri,
             name: params.name,
-            index: params.index,
+            index: _chosenIndex,
             isBurned: false,
             timestamp: block.timestamp
         });

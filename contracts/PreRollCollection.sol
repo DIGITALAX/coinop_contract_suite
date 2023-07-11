@@ -13,7 +13,6 @@ library MintParamsLibrary {
         uint256[] price;
         uint256 fulfillerId;
         uint256 discount;
-        uint256 index;
         string name;
         string uri;
         string printType;
@@ -192,10 +191,6 @@ contract PreRollCollection {
     ) external {
         address _creator = msg.sender;
         require(
-            params.index < params.price.length,
-            "PreRollCollection: The collection index cannot exceed the price array length."
-        );
-        require(
             _accessControl.isAdmin(_creator) ||
                 _accessControl.isWriter(_creator),
             "PreRollCollection: Only admin or writer can perform this action"
@@ -273,7 +268,7 @@ contract PreRollCollection {
         Collection memory newCollection = Collection({
             collectionId: _collectionSupply,
             price: params.price,
-            index: params.index,
+            index: 0,
             tokenIds: new uint256[](0),
             amount: _amount,
             mintedTokens: 0,
@@ -291,6 +286,7 @@ contract PreRollCollection {
     function _mintNFT(
         Collection memory _collection,
         uint256 _amount,
+        uint256 _chosenIndex,
         address _creatorAddress,
         address _purchaserAddress,
         address _acceptedToken
@@ -302,14 +298,14 @@ contract PreRollCollection {
                 printType: _printType[_collection.collectionId],
                 fulfillerId: _fulfillerId[_collection.collectionId],
                 discount: _discount[_collection.collectionId],
-                name: _collection.name,
-                index: _collection.index
+                name: _collection.name
             });
 
         _preRollNFT.mintBatch(
             paramsNFT,
             _amount,
             _collectionSupply,
+            _chosenIndex,
             _creatorAddress,
             _purchaserAddress,
             _acceptedToken
@@ -319,6 +315,7 @@ contract PreRollCollection {
     function purchaseAndMintToken(
         uint256 _collectionId,
         uint256 _amount,
+        uint256 _chosenIndex,
         address _purchaserAddress,
         address _acceptedToken
     ) external onlyMarket {
@@ -344,6 +341,7 @@ contract PreRollCollection {
         _mintNFT(
             _collections[_collectionId],
             _amount,
+            _chosenIndex,
             collection.creator,
             _purchaserAddress,
             _acceptedToken
@@ -357,6 +355,7 @@ contract PreRollCollection {
         }
 
         collection.tokenIds = _concatenate(collection.tokenIds, newTokenIds);
+        collection.index = _chosenIndex;
 
         emit TokensMinted(
             collection.collectionId,

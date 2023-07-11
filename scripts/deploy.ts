@@ -42,15 +42,15 @@ const main = async () => {
     //   "CoinOpChildFGO",
     //   "COCFGO",
     //   "0xA98121286825f5B1Fec5AdcC8F481f473Be566c7"
-    // );
+    // // );
     // const parentFGO = await ParentFGO.deploy(
-    //   childFGO.address,
-    //   coinOpFulfillment.address,
+    //   "0xC45D0C23F64aB9cB721b2246Cb3DFd699dBF8393",
+    //   "0x7370432A618E763D7a347575Fa732322072397A2",
     //   "0xA98121286825f5B1Fec5AdcC8F481f473Be566c7"
     // );
     // const coinOpFGOEscrow = await CoinOpFGOEscrow.deploy(
     //   parentFGO.address,
-    //   childFGO.address,
+    //   "0xC45D0C23F64aB9cB721b2246Cb3DFd699dBF8393",
     //   "0xA98121286825f5B1Fec5AdcC8F481f473Be566c7",
     //   "COEFGO",
     //   "CoinOpFGOEscrow"
@@ -91,7 +91,7 @@ const main = async () => {
     //   "0x7370432A618E763D7a347575Fa732322072397A2"
     // );
     // const preRollCollection = await PreRollCollection.deploy(
-    //   preRollNFT.address,
+    //   "0x510682452E96f0fF873C140B2e73324C67F2CC5E",
     //   "0xA98121286825f5B1Fec5AdcC8F481f473Be566c7",
     //   "0x2b85869418EeC27d6fBF4845B12B7815a916fF13",
     //   "PRCOL",
@@ -102,15 +102,15 @@ const main = async () => {
     //   "0xA98121286825f5B1Fec5AdcC8F481f473Be566c7",
     //   "0x7370432A618E763D7a347575Fa732322072397A2",
     //   "0x9Ef810FFC38EdE19008e746c9b56Bed75cA02786",
-    //   "0xad1015B8f320194111fF4835ed5909229a01591f",
-    //   "0x35387a466f9c78adB603295173ea9D5ad5ef47C7",
-    //   coinOpOracle.address,
+    //   "0xC45D0C23F64aB9cB721b2246Cb3DFd699dBF8393",
+    //   "0x4746b75A6C8Bb1698C8735c630CBfAf6D383E79c",
+    //   "0xe25F9302A6cf9FC00B8f2a878157177d9A4044A0",
     //   "0x2b85869418EeC27d6fBF4845B12B7815a916fF13",
-    //   preRollNFT.address,
+    //   "0x510682452E96f0fF873C140B2e73324C67F2CC5E",
     //   "COMA",
     //   "CoinOpMarket"
     // );
-    // const WAIT_BLOCK_CONFIRMATIONS = 20;
+    const WAIT_BLOCK_CONFIRMATIONS = 20;
     // accessControl.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS);
     // coinOpPayment.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS);
     // customCompositeNFT.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS);
@@ -164,31 +164,31 @@ const main = async () => {
     //   ],
     // });
     // await run(`verify:verify`, {
-    //   address: "0xad1015B8f320194111fF4835ed5909229a01591f",
+    //   address: "0xC45D0C23F64aB9cB721b2246Cb3DFd699dBF8393",
     //   constructorArguments: [
     //     "CoinOpChildFGO",
     //     "COCFGO",
     //     "0xA98121286825f5B1Fec5AdcC8F481f473Be566c7",
     //   ],
     // });
-    // await run(`verify:verify`, {
-    //   address: "0x35387a466f9c78adB603295173ea9D5ad5ef47C7",
-    //   constructorArguments: [
-    //     "0xad1015B8f320194111fF4835ed5909229a01591f",
-    //     "0x7370432A618E763D7a347575Fa732322072397A2",
-    //     "0xA98121286825f5B1Fec5AdcC8F481f473Be566c7",
-    //   ],
-    // });
-    // await run(`verify:verify`, {
-    //   address: "0xa37005385C730689cdd3B88619CeaD9dddb6Bf3D",
-    //   constructorArguments: [
-    //     "0x35387a466f9c78adB603295173ea9D5ad5ef47C7",
-    //     "0xad1015B8f320194111fF4835ed5909229a01591f",
-    //     "0xA98121286825f5B1Fec5AdcC8F481f473Be566c7",
-    //     "COEFGO",
-    //     "CoinOpFGOEscrow",
-    //   ],
-    // });
+    await run(`verify:verify`, {
+      address: "0xEA8D31a324BB4942106A3636B6033DFF43192567",
+      constructorArguments: [
+        "0xC45D0C23F64aB9cB721b2246Cb3DFd699dBF8393",
+        "0x7370432A618E763D7a347575Fa732322072397A2",
+        "0xA98121286825f5B1Fec5AdcC8F481f473Be566c7",
+      ],
+    });
+    await run(`verify:verify`, {
+      address: "0xc233BE781577d8857B66CA6c0746F1c45b318b90",
+      constructorArguments: [
+        "0xEA8D31a324BB4942106A3636B6033DFF43192567",
+        "0xC45D0C23F64aB9cB721b2246Cb3DFd699dBF8393",
+        "0xA98121286825f5B1Fec5AdcC8F481f473Be566c7",
+        "COEFGO",
+        "CoinOpFGOEscrow",
+      ],
+    });
     // await run(`verify:verify`, {
     //   address: "0xe25F9302A6cf9FC00B8f2a878157177d9A4044A0",
     //   constructorArguments: [
@@ -202,16 +202,16 @@ const main = async () => {
     //   ],
     // });
     // await run(`verify:verify`, {
-    //   address: "0x35F3259c4ECE6BFA62492DdB4667f8f4D37260C4",
+    //   address: "0x510682452E96f0fF873C140B2e73324C67F2CC5E",
     //   constructorArguments: [
     //     "0xA98121286825f5B1Fec5AdcC8F481f473Be566c7",
     //     "0x7370432A618E763D7a347575Fa732322072397A2",
     //   ],
     // });
     // await run(`verify:verify`, {
-    //   address: "0xDD5747C80ccf56Ce0268018f6173e966FF9dA545",
+    //   address: "0x217bCB5Da05C765095c61c084e30EEB256F8d406",
     //   constructorArguments: [
-    //     "0x35F3259c4ECE6BFA62492DdB4667f8f4D37260C4",
+    //     "0x510682452E96f0fF873C140B2e73324C67F2CC5E",
     //     "0xA98121286825f5B1Fec5AdcC8F481f473Be566c7",
     //     "0x2b85869418EeC27d6fBF4845B12B7815a916fF13",
     //     "PRCOL",
@@ -219,17 +219,17 @@ const main = async () => {
     //   ],
     // });
     // await run(`verify:verify`, {
-    //   address: "0x29eFfb2B92E8d116E31a3300BE4a1C32112D3584",
+    //   address: "0xC8Ff877C4e2297f28cf0f6961aeb645332B55799",
     //   constructorArguments: [
-    //     "0xDD5747C80ccf56Ce0268018f6173e966FF9dA545",
+    //     "0x217bCB5Da05C765095c61c084e30EEB256F8d406",
     //     "0xA98121286825f5B1Fec5AdcC8F481f473Be566c7",
     //     "0x7370432A618E763D7a347575Fa732322072397A2",
     //     "0x9Ef810FFC38EdE19008e746c9b56Bed75cA02786",
-    //     "0xad1015B8f320194111fF4835ed5909229a01591f",
-    //     "0x35387a466f9c78adB603295173ea9D5ad5ef47C7",
+    //     "0xC45D0C23F64aB9cB721b2246Cb3DFd699dBF8393",
+    //     "0x4746b75A6C8Bb1698C8735c630CBfAf6D383E79c",
     //     "0xe25F9302A6cf9FC00B8f2a878157177d9A4044A0",
     //     "0x2b85869418EeC27d6fBF4845B12B7815a916fF13",
-    //     "0x35F3259c4ECE6BFA62492DdB4667f8f4D37260C4",
+    //     "0x510682452E96f0fF873C140B2e73324C67F2CC5E",
     //     "COMA",
     //     "CoinOpMarket",
     //   ],
