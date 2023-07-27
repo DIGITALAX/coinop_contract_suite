@@ -150,7 +150,7 @@ contract CoinOpMarket {
     );
 
     constructor(
-        address _collectionContract,
+        address _preRollCollectionContract,
         address _accessControlContract,
         address _fulfillmentContract,
         address _customCompositeContract,
@@ -162,7 +162,7 @@ contract CoinOpMarket {
         string memory _symbol,
         string memory _name
     ) {
-        _preRollCollection = PreRollCollection(_collectionContract);
+        _preRollCollection = PreRollCollection(_preRollCollectionContract);
         _accessControl = CoinOpAccessControl(_accessControlContract);
         _coinOpPayment = CoinOpPayment(_coinOpPaymentContract);
         _oracle = CoinOpOracle(_oracleContract);

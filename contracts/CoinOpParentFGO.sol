@@ -30,8 +30,7 @@ contract CoinOpParentFGO is ERC721 {
     event FGOTemplateCreated(
         uint256 indexed parentTokenId,
         string parentURI,
-        uint256[] childTokenIds,
-        string[][] childTokenURIs
+        uint256[] childTokenIds
     );
 
     event ParentBurned(uint256 parentTokenId);
@@ -115,12 +114,7 @@ contract CoinOpParentFGO is ERC721 {
         _safeMint(address(_fgoEscrow), _totalSupply);
         _fgoEscrow.depositParent(_totalSupply);
 
-        emit FGOTemplateCreated(
-            _totalSupply,
-            _parentURI,
-            _childTokenIds,
-            _childURIs
-        );
+        emit FGOTemplateCreated(_totalSupply, _parentURI, _childTokenIds);
     }
 
     function burn(uint256 _tokenId) public onlyEscrow {
