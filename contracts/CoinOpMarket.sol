@@ -132,11 +132,11 @@ contract CoinOpMarket {
     event OrderIsFulfilled(uint256 indexed _orderId, address _fulfillerAddress);
 
     event OrderCreated(
-        uint256 indexed orderId,
+        uint256[] orderIds,
+        uint256[] prices,
         uint256 totalPrice,
         address buyer,
-        string fulfillmentInformation,
-        uint256 fulfillerId
+        string fulfillmentInformation
     );
     event UpdateOrderDetails(
         uint256 indexed _orderId,
@@ -195,6 +195,9 @@ contract CoinOpMarket {
         uint256[] memory _prices = new uint256[](
             params.preRollIds.length + params.customIds.length
         );
+        uint256[] memory _orderIds = new uint256[](
+            params.preRollIds.length + params.customIds.length
+        );
         uint256 exchangeRate = _oracle.getRateByAddress(
             params.chosenTokenAddress
         );
@@ -239,7 +242,7 @@ contract CoinOpMarket {
 
             _preRollTokenIdsSold[params.preRollIds[i]] = _tokenIds;
 
-            _createOrder(
+            uint256 orderId = _createOrder(
                 params.chosenTokenAddress,
                 msg.sender,
                 price * params.preRollAmounts[i],
@@ -248,7 +251,10 @@ contract CoinOpMarket {
                 params.fulfillmentDetails,
                 "preroll"
             );
+            _orderIds[i] = (orderId);
         }
+
+        uint256 j = params.preRollIds.length;
 
         for (uint256 i = 0; i < params.customIds.length; i++) {
             (uint256 price, uint256 fulfillerId) = _customCompositeMint(
@@ -280,7 +286,7 @@ contract CoinOpMarket {
                 params.customURIs[i]
             );
 
-            _createOrder(
+            uint256 orderId = _createOrder(
                 params.chosenTokenAddress,
                 msg.sender,
                 price * params.customAmounts[i],
@@ -290,8 +296,24 @@ contract CoinOpMarket {
                 "custom"
             );
 
-            _prices[i] = price * params.customAmounts[i];
+            _prices[j] = price * params.customAmounts[i];
+            _orderIds[j] = (orderId);
+            j++;
         }
+
+        uint256 _totalPrice = 0;
+
+        for (uint256 i = 0; i < _prices.length; i++) {
+            _totalPrice += _prices[i];
+        }
+
+        emit OrderCreated(
+            _orderIds,
+            _prices,
+            _totalPrice,
+            msg.sender,
+            params.fulfillmentDetails
+        );
 
         emit TokensBought(
             params.preRollIds,
@@ -312,7 +334,7 @@ contract CoinOpMarket {
         uint256 _tokenId,
         string memory _fulfillmentDetails,
         string memory _tokenType
-    ) internal {
+    ) internal returns (uint256) {
         _orderSupply++;
 
         Order memory newOrder = Order({
@@ -331,13 +353,7 @@ contract CoinOpMarket {
 
         _orders[_orderSupply] = newOrder;
 
-        emit OrderCreated(
-            _orderSupply,
-            _price,
-            _buyer,
-            _fulfillmentDetails,
-            _fulfillerId
-        );
+        return _orderSupply;
     }
 
     function _transferTokens(
@@ -375,10 +391,6 @@ contract CoinOpMarket {
                 _amount <
                 _preRollCollection.getCollectionAmount(_collectionId),
             "CoinOpMarket: No more tokens can be bought from this collection."
-        );
-
-        uint256 collectionIndex = _preRollCollection.getCollectionIndex(
-            _collectionId
         );
 
         uint256 basePrice = _preRollCollection.getCollectionPrice(
