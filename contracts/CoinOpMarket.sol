@@ -23,6 +23,7 @@ library MarketParamsLibrary {
         string[] customURIs;
         string fulfillmentDetails;
         address chosenTokenAddress;
+        bool sinPKP;
     }
 }
 
@@ -39,6 +40,7 @@ contract CoinOpMarket {
     uint256 private _orderSupply;
     string public symbol;
     string public name;
+    address private _pkpAddress;
 
     struct Order {
         uint256 orderId;
@@ -52,6 +54,12 @@ contract CoinOpMarket {
         address buyer;
         address chosenAddress;
         bool isFulfilled;
+    }
+
+    struct OrderData {
+        uint256 orderId;
+        uint256 price;
+        uint256 fulfillerId;
     }
 
     mapping(uint256 => uint256) private _preRollTokensSold;
@@ -148,6 +156,11 @@ contract CoinOpMarket {
         string newOrderStatus,
         address buyer
     );
+    event PKPAddressUpdated(
+        address indexed oldPKPAddress,
+        address indexed newPKPAddress,
+        address updater
+    );
 
     constructor(
         address _preRollCollectionContract,
@@ -159,6 +172,7 @@ contract CoinOpMarket {
         address _oracleContract,
         address _coinOpPaymentContract,
         address _preRollNFTContract,
+        address _pkpAddressAssigned,
         string memory _symbol,
         string memory _name
     ) {
@@ -174,12 +188,19 @@ contract CoinOpMarket {
         symbol = _symbol;
         name = _name;
         _orderSupply = 0;
+        _pkpAddress = _pkpAddressAssigned;
     }
 
     // collectionIds for preRoll and childId for custom
     function buyTokens(
         MarketParamsLibrary.MarketParams memory params
     ) external {
+        if (params.sinPKP == false) {
+            require(
+                msg.sender == _pkpAddress,
+                "CoinOpPayment: Only the assigned PKP can execute the function."
+            );
+        }
         require(
             _coinOpPayment.checkIfAddressVerified(params.chosenTokenAddress),
             "CoinOpPayment: Not a valid chosen payment address."
@@ -192,14 +213,12 @@ contract CoinOpMarket {
             "CoinOpMarket: Each token must have an amount."
         );
 
-        uint256[] memory _prices = new uint256[](
-            params.preRollIds.length + params.customIds.length
-        );
-        uint256[] memory _orderIds = new uint256[](
-            params.preRollIds.length + params.customIds.length
-        );
         uint256 exchangeRate = _oracle.getRateByAddress(
             params.chosenTokenAddress
+        );
+
+        OrderData[] memory allOrders = new OrderData[](
+            params.preRollIds.length + params.customIds.length
         );
 
         for (uint256 i = 0; i < params.preRollIds.length; i++) {
@@ -210,21 +229,23 @@ contract CoinOpMarket {
                 params.indexes[i],
                 params.chosenTokenAddress
             );
-            _canPurchase(
-                params.chosenTokenAddress,
-                price * params.preRollAmounts[i]
-            );
-            address creator = _preRollCollection.getCollectionCreator(
-                params.preRollIds[i]
-            );
-            _transferTokens(
-                params.chosenTokenAddress,
-                creator,
-                msg.sender,
-                price * params.preRollAmounts[i],
-                fulfillerId
-            );
-            _prices[i] = price * params.preRollAmounts[i];
+            if (params.sinPKP) {
+                _canPurchase(
+                    params.chosenTokenAddress,
+                    price * params.preRollAmounts[i]
+                );
+                address creator = _preRollCollection.getCollectionCreator(
+                    params.preRollIds[i]
+                );
+                _transferTokens(
+                    params.chosenTokenAddress,
+                    creator,
+                    msg.sender,
+                    price * params.preRollAmounts[i],
+                    fulfillerId
+                );
+            }
+
             _preRollCollection.purchaseAndMintToken(
                 params.preRollIds[i],
                 params.preRollAmounts[i],
@@ -251,10 +272,13 @@ contract CoinOpMarket {
                 params.fulfillmentDetails,
                 "preroll"
             );
-            _orderIds[i] = (orderId);
-        }
 
-        uint256 j = params.preRollIds.length;
+            allOrders[i] = OrderData({
+                orderId: orderId,
+                price: price * params.preRollAmounts[i],
+                fulfillerId: fulfillerId
+            });
+        }
 
         for (uint256 i = 0; i < params.customIds.length; i++) {
             (uint256 price, uint256 fulfillerId) = _customCompositeMint(
@@ -263,18 +287,22 @@ contract CoinOpMarket {
                 params.chosenTokenAddress
             );
 
-            _canPurchase(
-                params.chosenTokenAddress,
-                price * params.customAmounts[i]
-            );
-            address creator = _childFGO.getChildCreator(params.customIds[i]);
-            _transferTokens(
-                params.chosenTokenAddress,
-                creator,
-                msg.sender,
-                price * params.customAmounts[i],
-                fulfillerId
-            );
+            if (params.sinPKP) {
+                _canPurchase(
+                    params.chosenTokenAddress,
+                    price * params.customAmounts[i]
+                );
+                address creator = _childFGO.getChildCreator(
+                    params.customIds[i]
+                );
+                _transferTokens(
+                    params.chosenTokenAddress,
+                    creator,
+                    msg.sender,
+                    price * params.customAmounts[i],
+                    fulfillerId
+                );
+            }
 
             _customCompositeNFT.mint(
                 params.chosenTokenAddress,
@@ -296,15 +324,21 @@ contract CoinOpMarket {
                 "custom"
             );
 
-            _prices[j] = price * params.customAmounts[i];
-            _orderIds[j] = (orderId);
-            j++;
+            allOrders[params.preRollIds.length + i] = OrderData({
+                orderId: orderId,
+                price: price * params.customAmounts[i],
+                fulfillerId: fulfillerId
+            });
         }
 
+        uint256[] memory _orderIds = new uint256[](allOrders.length);
+        uint256[] memory _prices = new uint256[](allOrders.length);
         uint256 _totalPrice = 0;
 
-        for (uint256 i = 0; i < _prices.length; i++) {
-            _totalPrice += _prices[i];
+        for (uint256 i = 0; i < allOrders.length; i++) {
+            _orderIds[i] = allOrders[i].orderId;
+            _prices[i] = allOrders[i].price;
+            _totalPrice += allOrders[i].price;
         }
 
         emit OrderCreated(
@@ -555,6 +589,12 @@ contract CoinOpMarket {
         emit ParentFGOUpdated(oldAddress, _newParentFGOAddress, msg.sender);
     }
 
+    function updatePKPAddress(address _newPKPAddress) external onlyAdmin {
+        address oldAddress = _pkpAddress;
+        _pkpAddress = _newPKPAddress;
+        emit PKPAddressUpdated(oldAddress, _newPKPAddress, msg.sender);
+    }
+
     function getCollectionPreRollSoldCount(
         uint256 _collectionId
     ) public view returns (uint256) {
@@ -678,5 +718,9 @@ contract CoinOpMarket {
 
     function getParentFGOContract() public view returns (address) {
         return address(_parentFGO);
+    }
+
+    function getPKPAddress() public view returns (address) {
+        return _pkpAddress;
     }
 }

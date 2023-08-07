@@ -139,18 +139,18 @@ const main = async () => {
     // );
     // console.log(`Pre Roll NFT deployed at\n${preRollNFT.address}`);
     // console.log(`Coin Op Market deployed at\n${coinOpMarket.address}`);
-    await run(`verify:verify`, {
-      address: "0xB654b4D63a3F9311F6647d91bC4f3FfE1E5d200A",
-      constructorArguments: ["CoinOpAccessControl", "COAC"],
-    });
-    await run(`verify:verify`, {
-      address: "0xcA9360280Dac5960595A8D0cB3d73dEa1a0B9625",
-      constructorArguments: [
-        "0xB654b4D63a3F9311F6647d91bC4f3FfE1E5d200A",
-        "CoinOpPayment",
-        "COPA",
-      ],
-    });
+    // await run(`verify:verify`, {
+    //   address: "0xB654b4D63a3F9311F6647d91bC4f3FfE1E5d200A",
+    //   constructorArguments: ["CoinOpAccessControl", "COAC"],
+    // });
+    // await run(`verify:verify`, {
+    //   address: "0xcA9360280Dac5960595A8D0cB3d73dEa1a0B9625",
+    //   constructorArguments: [
+    //     "0xB654b4D63a3F9311F6647d91bC4f3FfE1E5d200A",
+    //     "CoinOpPayment",
+    //     "COPA",
+    //   ],
+    // });
     // await run(`verify:verify`, {
     //   address: "0x28F4Fb4ac48eb3D69f4E63D5cDc78f9D357D2cD7",
     //   constructorArguments: ["0xB654b4D63a3F9311F6647d91bC4f3FfE1E5d200A"],
@@ -234,6 +234,11 @@ const main = async () => {
     //     "CoinOpMarket",
     //   ],
     // });
+
+    await run(`verify:verify`, {
+      address: "0x566d63F1cC7f45Bfc9B2bdC785ffcc6F858F0997",
+      contract: "contracts/TestToken.sol:TestToken"
+    });
   } catch (err: any) {
     console.error(err.message);
   }

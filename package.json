@@ -3,13 +3,17 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.1",
     "@nomiclabs/hardhat-etherscan": "^3.1.5",
+    "@types/cors": "^2.8.13",
+    "@types/express": "^4.17.17",
     "hardhat": "^2.12.6"
   },
   "dependencies": {
     "@chainlink/contracts": "^0.6.1",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
     "@openzeppelin/contracts": "^4.8.1",
-    "dotenv": "^16.0.3",
-    "ethers": "^5.7.2"
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "ethers": "^5.7.2",
+    "express": "^4.18.2"
   }
 }
