@@ -286,6 +286,7 @@ contract PreRollCollection {
     function _mintNFT(
         Collection memory _collection,
         uint256 _amount,
+        uint256 _collectionId,
         uint256 _chosenIndex,
         address _creatorAddress,
         address _purchaserAddress,
@@ -304,7 +305,7 @@ contract PreRollCollection {
         _preRollNFT.mintBatch(
             paramsNFT,
             _amount,
-            _collectionSupply,
+            _collectionId,
             _chosenIndex,
             _creatorAddress,
             _purchaserAddress,
@@ -341,6 +342,7 @@ contract PreRollCollection {
         _mintNFT(
             _collections[_collectionId],
             _amount,
+            _collectionId,
             _chosenIndex,
             collection.creator,
             _purchaserAddress,

@@ -68,10 +68,10 @@ contract CoinOpMarket {
     struct SubOrder {
         uint256 subOrderId;
         uint256 orderId;
-        uint256 tokenId;
         uint256 amount;
         uint256 fulfillerId;
         uint256 price;
+        uint256[] tokenIds;
         string tokenType;
         string status;
         bool isFulfilled;
@@ -181,7 +181,10 @@ contract CoinOpMarket {
         address buyer
     );
 
-    event SubOrderIsFulfilled(uint256 indexed _subOrderId, address _fulfillerAddress);
+    event SubOrderIsFulfilled(
+        uint256 indexed _subOrderId,
+        address _fulfillerAddress
+    );
 
     event OrderCreated(
         uint256 orderId,
@@ -361,7 +364,7 @@ contract CoinOpMarket {
                 _orderSupply + 1,
                 price * params.preRollAmounts[i],
                 fulfillerId,
-                _tokenIds[_tokenIds.length - 1],
+                _tokenIds,
                 params.preRollAmounts[i],
                 "preroll"
             );
@@ -409,11 +412,14 @@ contract CoinOpMarket {
                 params.customURIs[i]
             );
 
+            uint256[] memory idsCustom = new uint256[](1);
+            idsCustom[0] = params.customIds[i];
+
             _createSubOrder(
                 _orderSupply + 1,
                 price * params.customAmounts[i],
                 fulfillerId,
-                params.customIds[i],
+                idsCustom,
                 params.customAmounts[i],
                 "custom"
             );
@@ -428,14 +434,14 @@ contract CoinOpMarket {
         uint256 _orderId,
         uint256 _price,
         uint256 _fulfillerId,
-        uint256 _tokenId,
+        uint256[] memory _tokenIds,
         uint256 _amount,
         string memory _tokenType
     ) internal {
         _subOrderSupply++;
         SubOrder memory newSubOrder = SubOrder({
             subOrderId: _subOrderSupply,
-            tokenId: _tokenId,
+            tokenIds: _tokenIds,
             amount: _amount,
             orderId: _orderId,
             tokenType: _tokenType,
@@ -685,10 +691,10 @@ contract CoinOpMarket {
         return _preRollTokenIdsSold[_collectionId];
     }
 
-    function getSubOrderTokenId(
+    function getSubOrderTokenIds(
         uint256 _subOrderId
-    ) public view returns (uint256) {
-        return _subOrders[_subOrderId].tokenId;
+    ) public view returns (uint256[] memory) {
+        return _subOrders[_subOrderId].tokenIds;
     }
 
     function getOrderDetails(
