@@ -25,6 +25,18 @@ library MarketParamsLibrary {
         address chosenTokenAddress;
         bool sinPKP;
     }
+    struct ContractAddresses {
+        PreRollCollection preRollCollection;
+        PreRollNFT preRollNFT;
+        CoinOpPayment coinOpPayment;
+        CoinOpOracle oracle;
+        CoinOpAccessControl accessControl;
+        CoinOpFulfillment coinOpFulfillment;
+        CustomCompositeNFT customCompositeNFT;
+        CoinOpChildFGO childFGO;
+        CoinOpParentFGO parentFGO;
+        address pkpAddress;
+    }
 }
 
 contract CoinOpMarket {
@@ -38,33 +50,44 @@ contract CoinOpMarket {
     CoinOpChildFGO private _childFGO;
     CoinOpParentFGO private _parentFGO;
     uint256 private _orderSupply;
+    uint256 private _subOrderSupply;
     string public symbol;
     string public name;
     address private _pkpAddress;
 
     struct Order {
         uint256 orderId;
-        uint256 tokenId;
         uint256 timestamp;
+        uint256[] subOrderIds;
+        string details;
+        string[] message;
+        address buyer;
+        address chosenAddress;
+    }
+
+    struct SubOrder {
+        uint256 subOrderId;
+        uint256 orderId;
+        uint256 tokenId;
+        uint256 amount;
         uint256 fulfillerId;
         uint256 price;
         string tokenType;
         string status;
-        string details;
-        address buyer;
-        address chosenAddress;
         bool isFulfilled;
     }
 
     struct OrderData {
-        uint256 orderId;
+        string category;
         uint256 price;
         uint256 fulfillerId;
+        uint256[] tokenIds;
     }
 
     mapping(uint256 => uint256) private _preRollTokensSold;
     mapping(uint256 => uint256[]) private _preRollTokenIdsSold;
     mapping(uint256 => Order) private _orders;
+    mapping(uint256 => SubOrder) private _subOrders;
 
     modifier onlyAdmin() {
         require(
@@ -77,6 +100,27 @@ contract CoinOpMarket {
     modifier onlyFulfiller(uint256 _fulfillerId) {
         require(
             _coinOpFulfillment.getFulfillerAddress(_fulfillerId) == msg.sender,
+            "CoinOpMarket: Only the fulfiller can update this status."
+        );
+        _;
+    }
+
+    modifier fulfillerIncluded(uint256[] memory _subOrderIds) {
+        bool isFulfiller = false;
+        for (uint256 i = 0; i < _subOrderIds.length; i++) {
+            uint256 fulfillerIdForSubOrder = _subOrders[_subOrderIds[i]]
+                .fulfillerId;
+            if (
+                _coinOpFulfillment.getFulfillerAddress(
+                    fulfillerIdForSubOrder
+                ) == msg.sender
+            ) {
+                isFulfiller = true;
+                break;
+            }
+        }
+        require(
+            isFulfiller,
             "CoinOpMarket: Only the fulfiller can update this status."
         );
         _;
@@ -137,23 +181,29 @@ contract CoinOpMarket {
         address buyer
     );
 
-    event OrderIsFulfilled(uint256 indexed _orderId, address _fulfillerAddress);
+    event SubOrderIsFulfilled(uint256 indexed _subOrderId, address _fulfillerAddress);
 
     event OrderCreated(
-        uint256[] orderIds,
+        uint256 orderId,
         uint256[] prices,
         uint256 totalPrice,
         address buyer,
-        string fulfillmentInformation
+        string fulfillmentInformation,
+        bool sinPKP
     );
     event UpdateOrderDetails(
-        uint256 indexed _orderId,
+        uint256 indexed orderId,
         string newOrderDetails,
         address buyer
     );
-    event UpdateOrderStatus(
-        uint256 indexed _orderId,
-        string newOrderStatus,
+    event UpdateOrderMessage(
+        uint256 indexed orderId,
+        string newMessageDetails,
+        address buyer
+    );
+    event UpdateSubOrderStatus(
+        uint256 indexed subOrderId,
+        string newSubOrderStatus,
         address buyer
     );
     event PKPAddressUpdated(
@@ -163,32 +213,23 @@ contract CoinOpMarket {
     );
 
     constructor(
-        address _preRollCollectionContract,
-        address _accessControlContract,
-        address _fulfillmentContract,
-        address _customCompositeContract,
-        address _childFGOContract,
-        address _parentFGOContract,
-        address _oracleContract,
-        address _coinOpPaymentContract,
-        address _preRollNFTContract,
-        address _pkpAddressAssigned,
+        MarketParamsLibrary.ContractAddresses memory _addresses,
         string memory _symbol,
         string memory _name
     ) {
-        _preRollCollection = PreRollCollection(_preRollCollectionContract);
-        _accessControl = CoinOpAccessControl(_accessControlContract);
-        _coinOpPayment = CoinOpPayment(_coinOpPaymentContract);
-        _oracle = CoinOpOracle(_oracleContract);
-        _coinOpFulfillment = CoinOpFulfillment(_fulfillmentContract);
-        _customCompositeNFT = CustomCompositeNFT(_customCompositeContract);
-        _childFGO = CoinOpChildFGO(_childFGOContract);
-        _parentFGO = CoinOpParentFGO(_parentFGOContract);
-        _preRollNFT = PreRollNFT(_preRollNFTContract);
+        _preRollCollection = PreRollCollection(_addresses.preRollCollection);
+        _accessControl = CoinOpAccessControl(_addresses.accessControl);
+        _coinOpPayment = CoinOpPayment(_addresses.coinOpPayment);
+        _oracle = CoinOpOracle(_addresses.oracle);
+        _coinOpFulfillment = CoinOpFulfillment(_addresses.coinOpFulfillment);
+        _customCompositeNFT = CustomCompositeNFT(_addresses.customCompositeNFT);
+        _childFGO = CoinOpChildFGO(_addresses.childFGO);
+        _parentFGO = CoinOpParentFGO(_addresses.parentFGO);
+        _preRollNFT = PreRollNFT(_addresses.preRollNFT);
         symbol = _symbol;
         name = _name;
         _orderSupply = 0;
-        _pkpAddress = _pkpAddressAssigned;
+        _pkpAddress = _addresses.pkpAddress;
     }
 
     // collectionIds for preRoll and childId for custom
@@ -217,10 +258,63 @@ contract CoinOpMarket {
             params.chosenTokenAddress
         );
 
-        OrderData[] memory allOrders = new OrderData[](
+        uint256[] memory _prices = new uint256[](
             params.preRollIds.length + params.customIds.length
         );
 
+        _processPreRollTokens(params, exchangeRate, _prices);
+
+        _processCustomTokens(params, exchangeRate, _prices);
+
+        uint256 _totalPrice = 0;
+
+        for (uint256 i = 0; i < _prices.length; i++) {
+            _totalPrice += _prices[i];
+        }
+
+        uint256[] memory _subOrderIds = new uint256[](
+            params.preRollIds.length + params.customIds.length
+        );
+        for (
+            uint256 i = 0;
+            i < params.preRollIds.length + params.customIds.length;
+            i++
+        ) {
+            _subOrderIds[i] = _subOrderSupply - i;
+        }
+
+        _createOrder(
+            params.chosenTokenAddress,
+            msg.sender,
+            _subOrderIds,
+            params.fulfillmentDetails
+        );
+
+        emit OrderCreated(
+            _orderSupply,
+            _prices,
+            _totalPrice,
+            msg.sender,
+            params.fulfillmentDetails,
+            params.sinPKP
+        );
+
+        emit TokensBought(
+            params.preRollIds,
+            params.customIds,
+            params.preRollAmounts,
+            params.customAmounts,
+            params.chosenTokenAddress,
+            _prices,
+            msg.sender
+        );
+    }
+
+    function _processPreRollTokens(
+        MarketParamsLibrary.MarketParams memory params,
+        uint256 exchangeRate,
+        uint256[] memory _prices
+    ) internal {
         for (uint256 i = 0; i < params.preRollIds.length; i++) {
             (uint256 price, uint256 fulfillerId) = _preRollCollectionMint(
                 params.preRollIds[i],
@@ -263,23 +357,24 @@ contract CoinOpMarket {
 
             _preRollTokenIdsSold[params.preRollIds[i]] = _tokenIds;
 
-            uint256 orderId = _createOrder(
-                params.chosenTokenAddress,
-                msg.sender,
+            _createSubOrder(
+                _orderSupply + 1,
                 price * params.preRollAmounts[i],
                 fulfillerId,
                 _tokenIds[_tokenIds.length - 1],
-                params.fulfillmentDetails,
+                params.preRollAmounts[i],
                 "preroll"
             );
 
-            allOrders[i] = OrderData({
-                orderId: orderId,
-                price: price * params.preRollAmounts[i],
-                fulfillerId: fulfillerId
-            });
+            _prices[i] = price * params.preRollAmounts[i];
         }
+    }
 
+    function _processCustomTokens(
+        MarketParamsLibrary.MarketParams memory params,
+        uint256 exchangeRate,
+        uint256[] memory _prices
+    ) internal {
         for (uint256 i = 0; i < params.customIds.length; i++) {
             (uint256 price, uint256 fulfillerId) = _customCompositeMint(
                 params.customIds[i],
@@ -314,80 +409,63 @@ contract CoinOpMarket {
                 params.customURIs[i]
             );
 
-            uint256 orderId = _createOrder(
-                params.chosenTokenAddress,
-                msg.sender,
+            _createSubOrder(
+                _orderSupply + 1,
                 price * params.customAmounts[i],
                 fulfillerId,
                 params.customIds[i],
-                params.fulfillmentDetails,
+                params.customAmounts[i],
                 "custom"
             );
 
-            allOrders[params.preRollIds.length + i] = OrderData({
-                orderId: orderId,
-                price: price * params.customAmounts[i],
-                fulfillerId: fulfillerId
-            });
+            _prices[params.preRollIds.length + i] =
+                price *
+                params.customAmounts[i];
         }
-
-        uint256[] memory _orderIds = new uint256[](allOrders.length);
-        uint256[] memory _prices = new uint256[](allOrders.length);
-        uint256 _totalPrice = 0;
-
-        for (uint256 i = 0; i < allOrders.length; i++) {
-            _orderIds[i] = allOrders[i].orderId;
-            _prices[i] = allOrders[i].price;
-            _totalPrice += allOrders[i].price;
-        }
-
-        emit OrderCreated(
-            _orderIds,
-            _prices,
-            _totalPrice,
-            msg.sender,
-            params.fulfillmentDetails
-        );
-
-        emit TokensBought(
-            params.preRollIds,
-            params.customIds,
-            params.preRollAmounts,
-            params.customAmounts,
-            params.chosenTokenAddress,
-            _prices,
-            msg.sender
-        );
     }
 
-    function _createOrder(
-        address _chosenAddress,
-        address _buyer,
+    function _createSubOrder(
+        uint256 _orderId,
         uint256 _price,
         uint256 _fulfillerId,
         uint256 _tokenId,
-        string memory _fulfillmentDetails,
+        uint256 _amount,
         string memory _tokenType
-    ) internal returns (uint256) {
-        _orderSupply++;
-
-        Order memory newOrder = Order({
-            orderId: _orderSupply,
+    ) internal {
+        _subOrderSupply++;
+        SubOrder memory newSubOrder = SubOrder({
+            subOrderId: _subOrderSupply,
             tokenId: _tokenId,
-            details: _fulfillmentDetails,
-            buyer: _buyer,
-            chosenAddress: _chosenAddress,
+            amount: _amount,
+            orderId: _orderId,
             tokenType: _tokenType,
             price: _price,
-            timestamp: block.timestamp,
             status: "ordered",
             isFulfilled: false,
             fulfillerId: _fulfillerId
         });
 
-        _orders[_orderSupply] = newOrder;
+        _subOrders[_subOrderSupply] = newSubOrder;
+    }
 
-        return _orderSupply;
+    function _createOrder(
+        address _chosenAddress,
+        address _buyer,
+        uint256[] memory _subOrderIds,
+        string memory _fulfillmentDetails
+    ) internal {
+        _orderSupply++;
+        Order memory newOrder = Order({
+            orderId: _orderSupply,
+            subOrderIds: _subOrderIds,
+            details: _fulfillmentDetails,
+            buyer: _buyer,
+            chosenAddress: _chosenAddress,
+            timestamp: block.timestamp,
+            message: new string[](0)
+        });
+
+        _orders[_orderSupply] = newOrder;
     }
 
     function _transferTokens(
@@ -607,14 +685,22 @@ contract CoinOpMarket {
         return _preRollTokenIdsSold[_collectionId];
     }
 
-    function getOrderTokenId(uint256 _orderId) public view returns (uint256) {
-        return _orders[_orderId].tokenId;
+    function getSubOrderTokenId(
+        uint256 _subOrderId
+    ) public view returns (uint256) {
+        return _subOrders[_subOrderId].tokenId;
     }
 
     function getOrderDetails(
         uint256 _orderId
     ) public view returns (string memory) {
         return _orders[_orderId].details;
+    }
+
+    function getOrderMessage(
+        uint256 _orderId
+    ) public view returns (string[] memory) {
+        return _orders[_orderId].message;
     }
 
     function getOrderBuyer(uint256 _orderId) public view returns (address) {
@@ -631,45 +717,75 @@ contract CoinOpMarket {
         return _orders[_orderId].timestamp;
     }
 
-    function getOrderStatus(
-        uint256 _orderId
+    function getSubOrderStatus(
+        uint256 _subOrderId
     ) public view returns (string memory) {
-        return _orders[_orderId].status;
+        return _subOrders[_subOrderId].status;
     }
 
-    function getOrderIsFulfilled(uint256 _orderId) public view returns (bool) {
-        return _orders[_orderId].isFulfilled;
+    function getSubOrderIsFulfilled(
+        uint256 _subOrderId
+    ) public view returns (bool) {
+        return _subOrders[_subOrderId].isFulfilled;
     }
 
-    function getOrderFulfillerId(
-        uint256 _orderId
+    function getSubOrderFulfillerId(
+        uint256 _subOrderId
     ) public view returns (uint256) {
-        return _orders[_orderId].fulfillerId;
+        return _subOrders[_subOrderId].fulfillerId;
     }
 
-    function getOrderTokenType(
-        uint256 _orderId
+    function getSubOrderTokenType(
+        uint256 _subOrderId
     ) public view returns (string memory) {
-        return _orders[_orderId].tokenType;
+        return _subOrders[_subOrderId].tokenType;
+    }
+
+    function getSubOrderOrderId(
+        uint256 _subOrderId
+    ) public view returns (uint256) {
+        return _subOrders[_subOrderId].orderId;
+    }
+
+    function getSubOrderAmount(
+        uint256 _subOrderId
+    ) public view returns (uint256) {
+        return _subOrders[_subOrderId].amount;
+    }
+
+    function getSubOrderPrice(
+        uint256 _subOrderId
+    ) public view returns (uint256) {
+        return _subOrders[_subOrderId].price;
+    }
+
+    function getOrderSubOrders(
+        uint256 _orderId
+    ) public view returns (uint256[] memory) {
+        return _orders[_orderId].subOrderIds;
     }
 
     function getOrderSupply() public view returns (uint256) {
         return _orderSupply;
     }
 
-    function setOrderisFulfilled(
-        uint256 _orderId
-    ) external onlyFulfiller(_orders[_orderId].fulfillerId) {
-        _orders[_orderId].isFulfilled = true;
-        emit OrderIsFulfilled(_orderId, msg.sender);
+    function getSubOrderSupply() public view returns (uint256) {
+        return _subOrderSupply;
     }
 
-    function setOrderStatus(
-        uint256 _orderId,
+    function setSubOrderisFulfilled(
+        uint256 _subOrderId
+    ) external onlyFulfiller(_subOrders[_subOrderId].fulfillerId) {
+        _subOrders[_subOrderId].isFulfilled = true;
+        emit SubOrderIsFulfilled(_subOrderId, msg.sender);
+    }
+
+    function setSubOrderStatus(
+        uint256 _subOrderId,
         string memory _status
-    ) external onlyFulfiller(_orders[_orderId].fulfillerId) {
-        _orders[_orderId].status = _status;
-        emit UpdateOrderStatus(_orderId, _status, msg.sender);
+    ) external onlyFulfiller(_subOrders[_subOrderId].fulfillerId) {
+        _subOrders[_subOrderId].status = _status;
+        emit UpdateSubOrderStatus(_subOrderId, _status, msg.sender);
     }
 
     function setOrderDetails(
@@ -682,6 +798,14 @@ contract CoinOpMarket {
         );
         _orders[_orderId].details = _newDetails;
         emit UpdateOrderDetails(_orderId, _newDetails, msg.sender);
+    }
+
+    function setOrderMessage(
+        uint256 _orderId,
+        string memory _newMessage
+    ) external fulfillerIncluded(_orders[_orderId].subOrderIds) {
+        _orders[_orderId].message.push(_newMessage);
+        emit UpdateOrderMessage(_orderId, _newMessage, msg.sender);
     }
 
     function getAccessControlContract() public view returns (address) {
