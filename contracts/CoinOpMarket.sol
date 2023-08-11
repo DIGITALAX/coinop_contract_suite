@@ -22,6 +22,7 @@ library MarketParamsLibrary {
         uint256[] indexes;
         string[] customURIs;
         string fulfillmentDetails;
+        string pkpTokenId;
         address chosenTokenAddress;
         bool sinPKP;
     }
@@ -88,6 +89,7 @@ contract CoinOpMarket {
     mapping(uint256 => uint256[]) private _preRollTokenIdsSold;
     mapping(uint256 => Order) private _orders;
     mapping(uint256 => SubOrder) private _subOrders;
+    mapping(string => uint256[]) private _PKPToOrderIds;
 
     modifier onlyAdmin() {
         require(
@@ -192,7 +194,8 @@ contract CoinOpMarket {
         uint256 totalPrice,
         address buyer,
         string fulfillmentInformation,
-        bool sinPKP
+        bool sinPKP,
+        string pkpTokenId
     );
     event UpdateOrderDetails(
         uint256 indexed orderId,
@@ -286,6 +289,10 @@ contract CoinOpMarket {
             _subOrderIds[i] = _subOrderSupply - i;
         }
 
+        if (!params.sinPKP) {
+            _PKPToOrderIds[params.pkpTokenId].push(_orderSupply);
+        }
+
         _createOrder(
             params.chosenTokenAddress,
             msg.sender,
@@ -299,7 +306,8 @@ contract CoinOpMarket {
             _totalPrice,
             msg.sender,
             params.fulfillmentDetails,
-            params.sinPKP
+            params.sinPKP,
+            params.pkpTokenId
         );
 
         emit TokensBought(
@@ -852,5 +860,11 @@ contract CoinOpMarket {
 
     function getPKPAddress() public view returns (address) {
         return _pkpAddress;
+    }
+
+    function getOrdersToPKP(
+        string memory _tokenIdPKP
+    ) public view returns (uint256[] memory) {
+        return _PKPToOrderIds[_tokenIdPKP];
     }
 }
