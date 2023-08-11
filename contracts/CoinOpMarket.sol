@@ -368,11 +368,20 @@ contract CoinOpMarket {
 
             _preRollTokenIdsSold[params.preRollIds[i]] = _tokenIds;
 
+            uint256[] memory _tokenIdsOrder = new uint256[](
+                params.preRollAmounts[i]
+            );
+            for (uint256 j = 0; j < params.preRollAmounts[i]; j++) {
+                _tokenIdsOrder[j] = _tokenIds[
+                    _tokenIds.length - params.preRollAmounts[i] + j
+                ];
+            }
+
             _createSubOrder(
                 _orderSupply + 1,
                 price * params.preRollAmounts[i],
                 fulfillerId,
-                _tokenIds,
+                _tokenIdsOrder,
                 params.preRollAmounts[i],
                 "preroll"
             );
