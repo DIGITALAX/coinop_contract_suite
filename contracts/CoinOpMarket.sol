@@ -90,6 +90,7 @@ contract CoinOpMarket {
     mapping(uint256 => Order) private _orders;
     mapping(uint256 => SubOrder) private _subOrders;
     mapping(string => uint256[]) private _PKPToOrderIds;
+    mapping(uint256 => address) private _orderIdToPKPAddress;
 
     modifier onlyAdmin() {
         require(
@@ -184,8 +185,8 @@ contract CoinOpMarket {
     );
 
     event SubOrderIsFulfilled(
-        uint256 indexed _subOrderId,
-        address _fulfillerAddress
+        uint256 indexed subOrderId,
+        address fulfillerAddress
     );
 
     event OrderCreated(
@@ -244,8 +245,8 @@ contract CoinOpMarket {
     ) external {
         if (params.sinPKP == false) {
             require(
-                msg.sender == _pkpAddress,
-                "CoinOpPayment: Only the assigned PKP can execute the function."
+                msg.sender == _pkpAddress || _accessControl.isAdmin(msg.sender),
+                "CoinOpPayment: Only the assigned PKP or Admin can execute the function sinPKP."
             );
         }
         require(
@@ -816,8 +817,8 @@ contract CoinOpMarket {
         string memory _newDetails
     ) external {
         require(
-            _orders[_orderId].buyer == msg.sender,
-            "CoinOpMarket: Only the buyer can update their order details."
+            _orders[_orderId].buyer == msg.sender || _pkpAddress == msg.sender,
+            "CoinOpMarket: Only the buyer or assigned PKP can update their order details."
         );
         _orders[_orderId].details = _newDetails;
         emit UpdateOrderDetails(_orderId, _newDetails, msg.sender);
@@ -875,5 +876,11 @@ contract CoinOpMarket {
         string memory _tokenIdPKP
     ) public view returns (uint256[] memory) {
         return _PKPToOrderIds[_tokenIdPKP];
+    }
+
+    function getOrderIdtoPKPAddress(
+        uint256 _orderId
+    ) public view returns (address) {
+        return _orderIdToPKPAddress[_orderId];
     }
 }

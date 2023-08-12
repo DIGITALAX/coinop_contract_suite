@@ -32,6 +32,11 @@ contract CoinOpParentFGO is ERC721 {
         string parentURI,
         uint256[] childTokenIds
     );
+    event FGOTemplateUpdated(
+        uint256 indexed parentTokenId,
+        string newParentURI,
+        uint256[] childTokenIds
+    );
 
     event ParentBurned(uint256 parentTokenId);
 
@@ -115,6 +120,54 @@ contract CoinOpParentFGO is ERC721 {
         _fgoEscrow.depositParent(_totalSupply);
 
         emit FGOTemplateCreated(_totalSupply, _parentURI, _childTokenIds);
+    }
+
+    function updateFGO(
+        uint256 _parentId,
+        uint256 _newPrice,
+        uint256[] memory _newChildPrices,
+        uint256 _newFulfillerId,
+        string memory _newParentURI,
+        string memory _newPrintType,
+        string[][] memory _newChildURIs,
+        string[] memory _newChildPosterURI,
+        address _newCreator
+    ) external onlyAdmin {
+        require(
+            _newChildPrices.length == _newChildURIs.length,
+            "CoinOpParentFGO: Prices and URIs Tokens must be the same length."
+        );
+        require(
+            _fulfillment.getFulfillerAddress(_newFulfillerId) != address(0),
+            "CoinOpFulfillment: Fulfiller Id is not valid."
+        );
+        _tokenIdToTemplate[_parentId]._price = _newPrice;
+        _tokenIdToTemplate[_parentId]._printType = _newPrintType;
+        _tokenIdToTemplate[_parentId]._fulfillerId = _newFulfillerId;
+        _tokenIdToTemplate[_parentId]._tokenURI = _newParentURI;
+        _tokenIdToTemplate[_parentId]._creator = _newCreator;
+
+        for (
+            uint256 i = 0;
+            i < _tokenIdToTemplate[_parentId]._childTokenIds.length;
+            i++
+        ) {
+            _childFGO.updateChildTemplate(
+                _tokenIdToTemplate[_parentId]._childTokenIds[i],
+                1,
+                _newFulfillerId,
+                _newChildPrices[i],
+                _newChildURIs[i],
+                _newChildPosterURI[i],
+                _newCreator
+            );
+        }
+
+        emit FGOTemplateUpdated(
+            _parentId,
+            _newParentURI,
+            _tokenIdToTemplate[_parentId]._childTokenIds
+        );
     }
 
     function burn(uint256 _tokenId) public onlyEscrow {

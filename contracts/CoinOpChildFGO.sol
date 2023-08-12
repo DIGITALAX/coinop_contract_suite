@@ -33,6 +33,11 @@ contract CoinOpChildFGO is ERC1155 {
         string[] tokenURI,
         string posterURI
     );
+    event ChildTemplateUpdated(
+        uint256 indexed tokenId,
+        string[] newTokenURI,
+        string newPosterURI
+    );
     event ParentIdAdded(uint256 indexed tokenId, uint256 parentId);
     event ChildBurned(uint256 childTokenId);
 
@@ -95,6 +100,25 @@ contract CoinOpChildFGO is ERC1155 {
         _mint(address(_fgoEscrow), _tokenIdPointer, _amount, "");
         _fgoEscrow.depositChild(_tokenIdPointer);
         emit ChildTemplateCreated(_tokenIdPointer, _tokenURIs, _posterURI);
+    }
+
+    function updateChildTemplate(
+        uint256 _childId,
+        uint256 _newAmount,
+        uint256 _newFulfillerId,
+        uint256 _newPrice,
+        string[] memory _newTokenURIs,
+        string memory _newPosterURI,
+        address _newCreator
+    ) external onlyParent {
+        _tokenIdToTemplate[_childId]._amount = _newAmount;
+        _tokenIdToTemplate[_childId]._fulfillerId = _newFulfillerId;
+        _tokenIdToTemplate[_childId]._price = _newPrice;
+        _tokenIdToTemplate[_childId]._tokenURIs = _newTokenURIs;
+        _tokenIdToTemplate[_childId]._posterURI = _newPosterURI;
+        _tokenIdToTemplate[_childId]._creator = _newCreator;
+
+        emit ChildTemplateUpdated(_childId, _newTokenURIs, _newPosterURI);
     }
 
     function burn(uint256 _id, uint256 _amount) public onlyEscrow {
