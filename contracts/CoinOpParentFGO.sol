@@ -19,7 +19,7 @@ contract CoinOpParentFGO is ERC721 {
         uint256 _tokenId;
         uint256 _fulfillerId;
         uint256[] _childTokenIds;
-        uint256 _price;
+        uint256[] _prices;
         string _tokenURI;
         string _printType;
         address _creator;
@@ -72,7 +72,7 @@ contract CoinOpParentFGO is ERC721 {
         string memory _printType,
         string[][] memory _childURIs,
         string[] memory _childPosterURI,
-        uint256 _price,
+        uint256[] memory _prices,
         uint256[] memory _childPrices,
         uint256 _fulfillerId
     ) public onlyAdmin {
@@ -99,7 +99,7 @@ contract CoinOpParentFGO is ERC721 {
             _fulfillerId: _fulfillerId,
             _tokenURI: _parentURI,
             _childTokenIds: _childTokenIds,
-            _price: _price,
+            _prices: _prices,
             _printType: _printType,
             _creator: msg.sender
         });
@@ -124,7 +124,7 @@ contract CoinOpParentFGO is ERC721 {
 
     function updateFGO(
         uint256 _parentId,
-        uint256 _newPrice,
+        uint256[] memory _newPrices,
         uint256[] memory _newChildPrices,
         uint256 _newFulfillerId,
         string memory _newParentURI,
@@ -141,7 +141,7 @@ contract CoinOpParentFGO is ERC721 {
             _fulfillment.getFulfillerAddress(_newFulfillerId) != address(0),
             "CoinOpFulfillment: Fulfiller Id is not valid."
         );
-        _tokenIdToTemplate[_parentId]._price = _newPrice;
+        _tokenIdToTemplate[_parentId]._prices = _newPrices;
         _tokenIdToTemplate[_parentId]._printType = _newPrintType;
         _tokenIdToTemplate[_parentId]._fulfillerId = _newFulfillerId;
         _tokenIdToTemplate[_parentId]._tokenURI = _newParentURI;
@@ -209,8 +209,8 @@ contract CoinOpParentFGO is ERC721 {
 
     function getParentPrice(
         uint256 _tokenId
-    ) public view virtual returns (uint256) {
-        return _tokenIdToTemplate[_tokenId]._price;
+    ) public view virtual returns (uint256[] memory) {
+        return _tokenIdToTemplate[_tokenId]._prices;
     }
 
     function getParentPrintType(

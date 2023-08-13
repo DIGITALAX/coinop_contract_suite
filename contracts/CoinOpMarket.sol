@@ -17,9 +17,10 @@ library MarketParamsLibrary {
     struct MarketParams {
         uint256[] preRollIds;
         uint256[] preRollAmounts;
+        uint256[] preRollIndexes;
         uint256[] customIds;
         uint256[] customAmounts;
-        uint256[] indexes;
+        uint256[] customIndexes;
         string[] customURIs;
         string fulfillmentDetails;
         string pkpTokenId;
@@ -332,7 +333,7 @@ contract CoinOpMarket {
                 params.preRollIds[i],
                 exchangeRate,
                 params.preRollAmounts[i],
-                params.indexes[i],
+                params.preRollIndexes[i],
                 params.chosenTokenAddress
             );
             if (params.sinPKP) {
@@ -355,7 +356,7 @@ contract CoinOpMarket {
             _preRollCollection.purchaseAndMintToken(
                 params.preRollIds[i],
                 params.preRollAmounts[i],
-                params.indexes[i],
+                params.preRollIndexes[i],
                 msg.sender,
                 params.chosenTokenAddress
             );
@@ -399,6 +400,7 @@ contract CoinOpMarket {
         for (uint256 i = 0; i < params.customIds.length; i++) {
             (uint256 price, uint256 fulfillerId) = _customCompositeMint(
                 params.customIds[i],
+                params.customIndexes[i],
                 exchangeRate,
                 params.chosenTokenAddress
             );
@@ -556,11 +558,12 @@ contract CoinOpMarket {
 
     function _customCompositeMint(
         uint256 _childId,
+        uint256 _chosenIndex,
         uint256 _exchangeRate,
         address _chosenTokenAddress
     ) internal view returns (uint256, uint256) {
         uint256 parentId = _childFGO.getChildTokenParentId(_childId);
-        uint256 parentPrice = _parentFGO.getParentPrice(parentId);
+        uint256 parentPrice = _parentFGO.getParentPrice(parentId)[_chosenIndex];
         uint256 basePrice = _childFGO.getChildPrice(_childId) + parentPrice;
 
         uint256 customPrice = _calculateAmount(
