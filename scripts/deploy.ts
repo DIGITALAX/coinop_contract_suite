@@ -21,6 +21,10 @@ const main = async () => {
     //   "PreRollCollection"
     // );
     // const CoinOpMarket = await ethers.getContractFactory("CoinOpMarket");
+    // const CoinOpPKPs = await ethers.getContractFactory("CoinOpPKPs");
+    // const CoinOpSubscription = await ethers.getContractFactory(
+    //   "CoinOpSubscription"
+    // );
     // const accessControl = await CoinOpAccessControl.deploy(
     //   "CoinOpAccessControl",
     //   "COAC"
@@ -97,10 +101,24 @@ const main = async () => {
     //   "PRCOL",
     //   "PreRollCollection"
     // );
+    // const coinOpPKPs = await CoinOpPKPs.deploy(
+    //   "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
+    //   "0xb1d06c81fd47dd1abb1172feb369306a2746f220",
+    //   "CoinOpPKPs",
+    //   "COPK"
+    // );
+    // const coinOpSubscription = await CoinOpSubscription.deploy(
+    //   "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
+    //   "0x1c6cE9018c8F3BDa3C527817CB324b8a85Af11A3",
+    //   "0xb1d06c81fd47dd1abb1172feb369306a2746f220",
+    //   "CoinOpSubscription",
+    //   "COSU"
+    // );
     // const coinOpMarket = await CoinOpMarket.deploy(
     //   {
     //     preRollCollection: "0x453511e08F3AF28F0A47620bb5f32479F4E2e280",
     //     preRollNFT: "0x6b0f8a590B14AF1579d7230060e0E8284eD1084B",
+    //     coinOpPKPs: coinOpPKPs.address,
     //     coinOpPayment: "0x1828808b73e26Aa6c5b014B56D8ac7C0823BF658",
     //     oracle: "0x7e066A206a982F7Aa0d6d0D4c5bC74E4bD048dF3",
     //     accessControl: "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
@@ -124,6 +142,8 @@ const main = async () => {
     // coinOpOracle.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS);
     // preRollNFT.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS);
     // preRollCollection.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS);
+    // coinOpPKPs.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS);
+    // coinOpSubscription.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS);
     // coinOpMarket.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS);
     // console.log(`Coin Op Access Control deployed at\n${accessControl.address}`);
     // console.log(`Coin Op Payment deployed at\n${coinOpPayment.address}`);
@@ -141,6 +161,10 @@ const main = async () => {
     //   `Pre Roll Collection deployed at\n${preRollCollection.address}`
     // );
     // console.log(`Pre Roll NFT deployed at\n${preRollNFT.address}`);
+    // console.log(`Coin Op PKPs deployed at\n${coinOpPKPs.address}`);
+    // console.log(
+    //   `Coin Op Subscription deployed at\n${coinOpSubscription.address}`
+    // );
     // console.log(`Coin Op Market deployed at\n${coinOpMarket.address}`);
     // await run(`verify:verify`, {
     //   address: "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
@@ -222,11 +246,31 @@ const main = async () => {
     //   ],
     // });
     // await run(`verify:verify`, {
-    //   address: "0x0E8fD2e1927F2354a7a1d636525A2Be0c7CA8694",
+    //   address: "0x1c6cE9018c8F3BDa3C527817CB324b8a85Af11A3",
+    //   constructorArguments: [
+    //     "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
+    //     "0xb1d06c81fd47dd1abb1172feb369306a2746f220",
+    //     "CoinOpPKPs",
+    //     "COPK",
+    //   ],
+    // });
+    await run(`verify:verify`, {
+      address: "0xF8371634aE217D9c24Fb5AB47D2641ea3FA343d8",
+      constructorArguments: [
+        "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
+        "0x1c6cE9018c8F3BDa3C527817CB324b8a85Af11A3",
+        "0xb1d06c81fd47dd1abb1172feb369306a2746f220",
+        "CoinOpSubscription",
+        "COSU",
+      ],
+    });
+    // await run(`verify:verify`, {
+    //   address: "0x006923e8E51CB3e3f7e9744F694F999dB88887Ee",
     //   constructorArguments: [
     //     {
     //       preRollCollection: "0x453511e08F3AF28F0A47620bb5f32479F4E2e280",
     //       preRollNFT: "0x6b0f8a590B14AF1579d7230060e0E8284eD1084B",
+    //       coinOpPKPs: "0x1c6cE9018c8F3BDa3C527817CB324b8a85Af11A3",
     //       coinOpPayment: "0x1828808b73e26Aa6c5b014B56D8ac7C0823BF658",
     //       oracle: "0x7e066A206a982F7Aa0d6d0D4c5bC74E4bD048dF3",
     //       accessControl: "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",

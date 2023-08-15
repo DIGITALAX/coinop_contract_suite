@@ -11,7 +11,7 @@ import "./CoinOpChildFGO.sol";
 import "./CoinOpParentFGO.sol";
 import "./CoinOpOracle.sol";
 import "./CoinOpPayment.sol";
-import "hardhat/console.sol";
+import "./CoinOpPKPs.sol";
 
 library MarketParamsLibrary {
     struct MarketParams {
@@ -30,6 +30,7 @@ library MarketParamsLibrary {
     struct ContractAddresses {
         PreRollCollection preRollCollection;
         PreRollNFT preRollNFT;
+        CoinOpPKPs coinOpPKPs;
         CoinOpPayment coinOpPayment;
         CoinOpOracle oracle;
         CoinOpAccessControl accessControl;
@@ -45,6 +46,7 @@ contract CoinOpMarket {
     PreRollCollection private _preRollCollection;
     PreRollNFT private _preRollNFT;
     CoinOpPayment private _coinOpPayment;
+    CoinOpPKPs private _coinOpPKPs;
     CoinOpOracle private _oracle;
     CoinOpAccessControl private _accessControl;
     CoinOpFulfillment private _coinOpFulfillment;
@@ -160,6 +162,11 @@ contract CoinOpMarket {
         address indexed newCoinOpPayment,
         address updater
     );
+    event CoinOpPKPsUpdated(
+        address indexed oldCoinOpPKPs,
+        address indexed newCoinOpPKPs,
+        address updater
+    );
     event ChildFGOUpdated(
         address indexed oldChildFGO,
         address indexed newChildFGO,
@@ -226,6 +233,7 @@ contract CoinOpMarket {
         string memory _name
     ) {
         _preRollCollection = PreRollCollection(_addresses.preRollCollection);
+        _coinOpPKPs = CoinOpPKPs(_addresses.coinOpPKPs);
         _accessControl = CoinOpAccessControl(_addresses.accessControl);
         _coinOpPayment = CoinOpPayment(_addresses.coinOpPayment);
         _oracle = CoinOpOracle(_addresses.oracle);
@@ -248,6 +256,10 @@ contract CoinOpMarket {
             require(
                 msg.sender == _pkpAddress || _accessControl.isAdmin(msg.sender),
                 "CoinOpPayment: Only the assigned PKP or Admin can execute the function sinPKP."
+            );
+            require(
+                _coinOpPKPs.userExists(params.pkpTokenId),
+                "CoinOpPKPs: User does not yet have an account."
             );
         }
         require(
@@ -688,6 +700,12 @@ contract CoinOpMarket {
         );
     }
 
+    function updateCoinOpPKPs(address _newCoinOpPKPs) external onlyAdmin {
+        address oldAddress = address(_coinOpPKPs);
+        _coinOpPKPs = CoinOpPKPs(_newCoinOpPKPs);
+        emit CoinOpPKPsUpdated(oldAddress, _newCoinOpPKPs, msg.sender);
+    }
+
     function updateParentFGO(address _newParentFGOAddress) external onlyAdmin {
         address oldAddress = address(_parentFGO);
         _parentFGO = CoinOpParentFGO(_newParentFGOAddress);
@@ -841,6 +859,10 @@ contract CoinOpMarket {
 
     function getPreRollCollectionContract() public view returns (address) {
         return address(_preRollCollection);
+    }
+
+    function getCoinOpPKPsContract() public view returns (address) {
+        return address(_coinOpPKPs);
     }
 
     function getPreRollNFTContract() public view returns (address) {

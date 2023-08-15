@@ -9,5 +9,7 @@
   "oracle": "0x31bbf0CD528aCb595E9F2dEdeb2f0771AeFD6368",
   "preRollCollection": "0x3f4adD04f00D392564cC6811227CE98c060e4c41",
   "preRollNFT": "0xd6cF186a6D977E4785621C86918c7F3E50128053",
-  "market": "0xccD822d422dC60b71514c6990DDe0aD539FE5316"
+  "market": "",
+  "coinOpPKPs": "",
+  "coinOpSubscription": ""
 }
