@@ -25,6 +25,9 @@ const main = async () => {
     // const CoinOpSubscription = await ethers.getContractFactory(
     //   "CoinOpSubscription"
     // );
+    // const CoinOpPreludePoints = await ethers.getContractFactory(
+    //   "CoinOpPreludePoints"
+    // );
     // const accessControl = await CoinOpAccessControl.deploy(
     //   "CoinOpAccessControl",
     //   "COAC"
@@ -102,30 +105,54 @@ const main = async () => {
     //   "PreRollCollection"
     // );
     // const coinOpPKPs = await CoinOpPKPs.deploy(
-    //   "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
+    //   // "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
+    //   // "0xb1d06c81fd47dd1abb1172feb369306a2746f220",
+    //   "0xB654b4D63a3F9311F6647d91bC4f3FfE1E5d200A",
     //   "0xb1d06c81fd47dd1abb1172feb369306a2746f220",
     //   "CoinOpPKPs",
     //   "COPK"
     // );
     // const coinOpSubscription = await CoinOpSubscription.deploy(
-    //   "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
-    //   "0x1c6cE9018c8F3BDa3C527817CB324b8a85Af11A3",
+    //   // "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
+    //   // "0x1c6cE9018c8F3BDa3C527817CB324b8a85Af11A3",
+    //   // "0xb1d06c81fd47dd1abb1172feb369306a2746f220",
+    //   "0xB654b4D63a3F9311F6647d91bC4f3FfE1E5d200A",
+    //   coinOpPKPs.address,
     //   "0xb1d06c81fd47dd1abb1172feb369306a2746f220",
     //   "CoinOpSubscription",
     //   "COSU"
     // );
+    // const coinOpPreludePoints = await CoinOpPreludePoints.deploy(
+    //   "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
+    //   "CoinOpPreludePoints",
+    //   "COPP",
+    //   "0xb1d06c81fd47dd1abb1172feb369306a2746f220"
+    // );
     // const coinOpMarket = await CoinOpMarket.deploy(
+    //   // {
+    //   //   preRollCollection: "0x453511e08F3AF28F0A47620bb5f32479F4E2e280",
+    //   //   preRollNFT: "0x6b0f8a590B14AF1579d7230060e0E8284eD1084B",
+    //   //   coinOpPKPs: coinOpPKPs.address,
+    //   //   coinOpPayment: "0x1828808b73e26Aa6c5b014B56D8ac7C0823BF658",
+    //   //   oracle: "0x7e066A206a982F7Aa0d6d0D4c5bC74E4bD048dF3",
+    //   //   accessControl: "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
+    //   //   coinOpFulfillment: "0x84E7493b1DB31bf643FD0C8A129B3b8acfD9413b",
+    //   //   customCompositeNFT: "0xB1d40C45B332A6d18319799E964fDa4A4b47aa7e",
+    //   //   childFGO: "0xa4b4B4529a67a16656e31d587452a6F0331313e5",
+    //   //   parentFGO: "0x7BAae0D2aBD4F076b2D83442043105e4B49B4F02",
+    //   //   pkpAddress: "0xb1d06c81fd47dd1abb1172feb369306a2746f220",
+    //   // },
     //   {
-    //     preRollCollection: "0x453511e08F3AF28F0A47620bb5f32479F4E2e280",
-    //     preRollNFT: "0x6b0f8a590B14AF1579d7230060e0E8284eD1084B",
+    //     preRollCollection: "0x3f4adD04f00D392564cC6811227CE98c060e4c41",
+    //     preRollNFT: "0xd6cF186a6D977E4785621C86918c7F3E50128053",
     //     coinOpPKPs: coinOpPKPs.address,
-    //     coinOpPayment: "0x1828808b73e26Aa6c5b014B56D8ac7C0823BF658",
-    //     oracle: "0x7e066A206a982F7Aa0d6d0D4c5bC74E4bD048dF3",
-    //     accessControl: "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
-    //     coinOpFulfillment: "0x84E7493b1DB31bf643FD0C8A129B3b8acfD9413b",
-    //     customCompositeNFT: "0xB1d40C45B332A6d18319799E964fDa4A4b47aa7e",
-    //     childFGO: "0xa4b4B4529a67a16656e31d587452a6F0331313e5",
-    //     parentFGO: "0x7BAae0D2aBD4F076b2D83442043105e4B49B4F02",
+    //     coinOpPayment: "0xcA9360280Dac5960595A8D0cB3d73dEa1a0B9625",
+    //     oracle: "0x31bbf0CD528aCb595E9F2dEdeb2f0771AeFD6368",
+    //     accessControl: "0xB654b4D63a3F9311F6647d91bC4f3FfE1E5d200A",
+    //     coinOpFulfillment: "0xF80D3044B28807f52EFB38e37b681eFF9D2867b9",
+    //     customCompositeNFT: "0x28F4Fb4ac48eb3D69f4E63D5cDc78f9D357D2cD7",
+    //     childFGO: "0x855a37e1d36e5665100419b403C9d8e7D84980BB",
+    //     parentFGO: "0x2A7cb9f3bc5B16E02D63997c5c893626c9D546B9",
     //     pkpAddress: "0xb1d06c81fd47dd1abb1172feb369306a2746f220",
     //   },
     //   "COMA",
@@ -144,7 +171,8 @@ const main = async () => {
     // preRollCollection.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS);
     // coinOpPKPs.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS);
     // coinOpSubscription.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS);
-    // coinOpMarket.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS);
+    // coinOpMarket.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS); 
+    // coinOpPreludePoints.deployTransaction.wait(WAIT_BLOCK_CONFIRMATIONS);
     // console.log(`Coin Op Access Control deployed at\n${accessControl.address}`);
     // console.log(`Coin Op Payment deployed at\n${coinOpPayment.address}`);
     // console.log(
@@ -166,6 +194,7 @@ const main = async () => {
     //   `Coin Op Subscription deployed at\n${coinOpSubscription.address}`
     // );
     // console.log(`Coin Op Market deployed at\n${coinOpMarket.address}`);
+    // console.log(`Coin Op Prelude Points deployed at\n${coinOpPreludePoints.address}`);
     // await run(`verify:verify`, {
     //   address: "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
     //   constructorArguments: ["CoinOpAccessControl", "COAC"],
@@ -246,38 +275,47 @@ const main = async () => {
     //   ],
     // });
     // await run(`verify:verify`, {
-    //   address: "0x1c6cE9018c8F3BDa3C527817CB324b8a85Af11A3",
+    //   address: "0x0b6a690285852A7C44cdEBD1F31B857Bc0803953",
     //   constructorArguments: [
-    //     "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
+    //     "0xB654b4D63a3F9311F6647d91bC4f3FfE1E5d200A",
     //     "0xb1d06c81fd47dd1abb1172feb369306a2746f220",
     //     "CoinOpPKPs",
     //     "COPK",
     //   ],
     // });
+    // await run(`verify:verify`, {
+    //   address: "0x8A791edF61BFd83C37CE8B2F72A6C388D5084cE4",
+    //   constructorArguments: [
+    //     "0xB654b4D63a3F9311F6647d91bC4f3FfE1E5d200A",
+    //     "0x0b6a690285852A7C44cdEBD1F31B857Bc0803953",
+    //     "0xb1d06c81fd47dd1abb1172feb369306a2746f220",
+    //     "CoinOpSubscription",
+    //     "COSU",
+    //   ],
+    // });
     await run(`verify:verify`, {
-      address: "0xF8371634aE217D9c24Fb5AB47D2641ea3FA343d8",
+      address: "0x9CAC0A7944ba70Afd04AA62B532Cf041842E9A1a",
       constructorArguments: [
         "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
-        "0x1c6cE9018c8F3BDa3C527817CB324b8a85Af11A3",
+        "CoinOpPreludePoints",
+        "COPP",
         "0xb1d06c81fd47dd1abb1172feb369306a2746f220",
-        "CoinOpSubscription",
-        "COSU",
       ],
     });
     // await run(`verify:verify`, {
-    //   address: "0x006923e8E51CB3e3f7e9744F694F999dB88887Ee",
+    //   address: "0x459fa8E27F943c2a37A0dFD18109686Cca6Ed0b7",
     //   constructorArguments: [
     //     {
-    //       preRollCollection: "0x453511e08F3AF28F0A47620bb5f32479F4E2e280",
-    //       preRollNFT: "0x6b0f8a590B14AF1579d7230060e0E8284eD1084B",
-    //       coinOpPKPs: "0x1c6cE9018c8F3BDa3C527817CB324b8a85Af11A3",
-    //       coinOpPayment: "0x1828808b73e26Aa6c5b014B56D8ac7C0823BF658",
-    //       oracle: "0x7e066A206a982F7Aa0d6d0D4c5bC74E4bD048dF3",
-    //       accessControl: "0xB85622D6afF34EC053C72D8DddCC45CE178eA0Ce",
-    //       coinOpFulfillment: "0x84E7493b1DB31bf643FD0C8A129B3b8acfD9413b",
-    //       customCompositeNFT: "0xB1d40C45B332A6d18319799E964fDa4A4b47aa7e",
-    //       childFGO: "0xa4b4B4529a67a16656e31d587452a6F0331313e5",
-    //       parentFGO: "0x7BAae0D2aBD4F076b2D83442043105e4B49B4F02",
+    //       preRollCollection: "0x3f4adD04f00D392564cC6811227CE98c060e4c41",
+    //       preRollNFT: "0xd6cF186a6D977E4785621C86918c7F3E50128053",
+    //       coinOpPKPs: "0x0b6a690285852A7C44cdEBD1F31B857Bc0803953",
+    //       coinOpPayment: "0xcA9360280Dac5960595A8D0cB3d73dEa1a0B9625",
+    //       oracle: "0x31bbf0CD528aCb595E9F2dEdeb2f0771AeFD6368",
+    //       accessControl: "0xB654b4D63a3F9311F6647d91bC4f3FfE1E5d200A",
+    //       coinOpFulfillment: "0xF80D3044B28807f52EFB38e37b681eFF9D2867b9",
+    //       customCompositeNFT: "0x28F4Fb4ac48eb3D69f4E63D5cDc78f9D357D2cD7",
+    //       childFGO: "0x855a37e1d36e5665100419b403C9d8e7D84980BB",
+    //       parentFGO: "0x2A7cb9f3bc5B16E02D63997c5c893626c9D546B9",
     //       pkpAddress: "0xb1d06c81fd47dd1abb1172feb369306a2746f220",
     //     },
     //     "COMA",

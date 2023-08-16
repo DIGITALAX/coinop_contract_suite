@@ -9,7 +9,8 @@
   "oracle": "0x31bbf0CD528aCb595E9F2dEdeb2f0771AeFD6368",
   "preRollCollection": "0x3f4adD04f00D392564cC6811227CE98c060e4c41",
   "preRollNFT": "0xd6cF186a6D977E4785621C86918c7F3E50128053",
-  "market": "",
-  "coinOpPKPs": "",
-  "coinOpSubscription": ""
+  "market": "0x459fa8E27F943c2a37A0dFD18109686Cca6Ed0b7",
+  "coinOpPKPs": "0x0b6a690285852A7C44cdEBD1F31B857Bc0803953",
+  "coinOpSubscription": "0x8A791edF61BFd83C37CE8B2F72A6C388D5084cE4",
+  "preludePoints": "0x886961365cdaCFF596a92f5d3a7f3783AE2E8c83"
 }
