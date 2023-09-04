@@ -340,7 +340,7 @@ contract PreRollCollection {
         uint256 initialSupply = _preRollNFT.getTotalSupplyCount();
 
         _mintNFT(
-            _collections[_collectionId],
+            collection,
             _amount,
             _collectionId,
             _chosenIndex,

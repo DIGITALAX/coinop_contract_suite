@@ -93,7 +93,6 @@ contract CoinOpMarket {
     mapping(uint256 => Order) private _orders;
     mapping(uint256 => SubOrder) private _subOrders;
     mapping(string => uint256[]) private _PKPToOrderIds;
-    mapping(uint256 => address) private _orderIdToPKPAddress;
 
     modifier onlyAdmin() {
         require(
@@ -901,11 +900,5 @@ contract CoinOpMarket {
         string memory _tokenIdPKP
     ) public view returns (uint256[] memory) {
         return _PKPToOrderIds[_tokenIdPKP];
-    }
-
-    function getOrderIdtoPKPAddress(
-        uint256 _orderId
-    ) public view returns (address) {
-        return _orderIdToPKPAddress[_orderId];
     }
 }
